@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ticky 캐릭터 랩</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --up: #f04452;
+    --down: #3182f6;
+    --flat: #c9c1b4;
+    /* eyelid = a slightly darker shade of the body */
+    --up-lid: #c9303d;
+    --down-lid: #2266d0;
+    --flat-lid: #a69d8f;
+    --ink: #1f1f1f;
+    --wall: #eef0f3;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 1px 1px, #d9dde3 1px, transparent 0) 0 0 / 22px 22px,
+      var(--wall);
+    font-family: "Gaegu", system-ui, sans-serif;
+    color: var(--ink);
+  }
+  header { padding: 28px 32px 0; }
+  h1 { margin: 0; font-size: 34px; font-weight: 700; }
+  header p { margin: 4px 0 0; font-size: 19px; color: #555; }
+  .toggle {
+    margin-top: 10px;
+    padding: 4px 14px 6px;
+    font: 700 18px "Gaegu", system-ui, sans-serif;
+    color: var(--ink);
+    background: #fff;
+    border: 2.5px solid var(--ink);
+    border-radius: 14px;
+    cursor: pointer;
+  }
+
+  .desk {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 4px;
+    justify-content: center;
+    align-items: flex-end;
+    padding: 24px 16px 0;
+  }
+  .pet {
+    width: 172px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .bubble {
+    position: relative;
+    min-height: 34px;
+    padding: 4px 12px 6px;
+    margin-bottom: 6px;
+    background: #fff;
+    border: 2.5px solid var(--ink);
+    border-radius: 18px 16px 20px 14px;
+    font-size: 19px;
+    font-weight: 700;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+  .bubble::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -9px;
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border-right: 2.5px solid var(--ink);
+    border-bottom: 2.5px solid var(--ink);
+    transform: translateX(-50%) rotate(45deg) skew(8deg, 8deg);
+  }
+  .pet svg { width: 144px; height: 168px; overflow: visible; }
+  .tag {
+    margin-top: 2px;
+    font-size: 17px;
+    font-weight: 700;
+  }
+  .tag b { font-weight: 700; }
+  .tag .up { color: var(--up); }
+  .tag .down { color: var(--down); }
+  .tag .flat { color: #8a8378; }
+  .name { font-size: 15px; color: #777; }
+
+  .taskbar {
+    margin-top: 10px;
+    height: 44px;
+    background: rgba(255, 255, 255, 0.75);
+    border-top: 1px solid #d6dae0;
+  }
+
+  /* motion */
+  .hop   { animation: hop 0.9s cubic-bezier(.3,0,.4,1) infinite; transform-origin: 60px 132px; }
+  .bob   { animation: bob 1.6s ease-in-out infinite; transform-origin: 60px 132px; }
+  .idle  { animation: breathe 3.2s ease-in-out infinite; transform-origin: 60px 132px; }
+  .sway  { animation: sway 3.6s ease-in-out infinite; transform-origin: 60px 132px; }
+  .melt  { animation: melt 2.8s ease-in-out infinite; transform-origin: 60px 132px; }
+  @keyframes hop {
+    0%, 100% { transform: translateY(0) scale(1.06, 0.92); }
+    15% { transform: translateY(0) scale(0.94, 1.08); }
+    45% { transform: translateY(-26px) scale(0.97, 1.04); }
+    75% { transform: translateY(0) scale(1.08, 0.9); }
+  }
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-7px); }
+  }
+  @keyframes breathe {
+    0%, 100% { transform: scale(1, 1); }
+    50% { transform: scale(1.02, 0.97); }
+  }
+  @keyframes sway {
+    0%, 100% { transform: rotate(-3deg); }
+    50% { transform: rotate(2deg); }
+  }
+  @keyframes melt {
+    0%, 100% { transform: scale(1, 1); }
+    50% { transform: scale(1.04, 0.95); }
+  }
+  /* 폭등: trembling with a lit fuse; 폭락: smoke drifting up after the blast */
+  .shake { animation: shake 0.12s linear infinite; transform-origin: 60px 132px; }
+  .spark { animation: spark 0.16s steps(2) infinite alternate; transform-box: fill-box; transform-origin: center; }
+  .puff  { animation: puff 2.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+  .puff.p2 { animation-delay: .8s; }
+  .puff.p3 { animation-delay: 1.6s; }
+  @keyframes shake {
+    0%   { transform: translate(0, 0) rotate(0); }
+    25%  { transform: translate(-1.2px, 0.6px) rotate(-1deg); }
+    50%  { transform: translate(1px, -0.6px) rotate(1deg); }
+    75%  { transform: translate(-0.6px, -0.8px) rotate(-0.5deg); }
+    100% { transform: translate(0.8px, 0.6px) rotate(0.6deg); }
+  }
+  @keyframes spark { from { transform: scale(0.8) rotate(0); } to { transform: scale(1.25) rotate(20deg); } }
+  @keyframes puff  { 0% { opacity: 0; transform: translateY(6px) scale(.6); } 25% { opacity: .75; } 100% { opacity: 0; transform: translateY(-14px) scale(1.2); } }
+  @media (prefers-reduced-motion: reduce) {
+    .shake, .spark, .puff { animation: none; }
+    .hop, .bob, .idle, .sway, .melt { animation: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>ticky 캐릭터 랩</h1>
+  <p>단색 몸 · 외곽선 없음 · 멀리 떨어진 작은 눈 · 무표정 + 한마디</p>
+  <button class="toggle" id="lidToggle" type="button"></button>
+  <button class="toggle" id="feetToggle" type="button"></button>
+  <button class="toggle" id="sleepToggle" type="button"></button>
+  <button class="toggle" id="happyToggle" type="button"></button>
+</header>
+
+<svg width="0" height="0" style="position:absolute">
+  <filter id="boil">
+    <feTurbulence id="turb" type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="1" />
+    <feDisplacementMap in="SourceGraphic" scale="3.2" />
+  </filter>
+</svg>
+
+<main class="desk" id="desk"></main>
+<div class="taskbar"></div>
+
+<script>
+const C = { up: 'var(--up)', down: 'var(--down)', flat: 'var(--flat)' };
+const INK = '#1f1f1f';
+
+// true = new solid eyelids, false = the previous line-only lids (toggle button in the header)
+let useLids = true;
+
+// feet: 0 = body-colour capsules (original), 1 = black capsules, 2 = short flat black ovals
+const FEET = ['몸 색', '검정', '검정 · 납작'];
+let feetMode = 1; // current pick: new lids + black capsule feet
+function feet(cx, ground, fill) {
+  if (feetMode === 2) {
+    return `<ellipse cx="${cx - 10.5}" cy="${ground - 4}" rx="6.5" ry="4.5" fill="${INK}"/>` +
+           `<ellipse cx="${cx + 10.5}" cy="${ground - 4}" rx="6.5" ry="4.5" fill="${INK}"/>`;
+  }
+  const c = feetMode === 1 ? INK : fill;
+  return `<rect x="${cx - 16}" y="${ground - 14}" width="11" height="14" rx="5.5" fill="${c}"/>` +
+         `<rect x="${cx + 5}" y="${ground - 14}" width="11" height="14" rx="5.5" fill="${c}"/>`;
+}
+
+// sleep face: 0 = closed-eye curves (original), 1 = lids fully down, 2 = lids down + snoring with a snot bubble
+// 3 = U-shaped closed eyes + drool (from the sleeping-ghost reference)
+// 4 = lids fully down + drool
+const SLEEP = ['기존', '눈꺼풀 내림', '눈꺼풀 + 코풍선', 'U눈 + 침', '눈꺼풀 + 침'];
+let sleepMode = 4; // current pick: lids + drool
+
+// happy ("오늘 좀 되는데") face: 0 = original, 1 = content (eyes closed, smile), 2 = smug (half-lid side-eye, smirk)
+const HAPPY = ['기존', '흐뭇', '우쭐'];
+let happyMode = 2; // current pick: smug
+const eyeKind = (m) => (m.key === 'happy' && happyMode ? ['', 'content', 'smug'][happyMode] : m.eye);
+function mouthKind(m) {
+  if (m.key === 'sleep' && sleepMode === 2) return 'snore';
+  if (m.key === 'sleep' && (sleepMode === 3 || sleepMode === 4)) return 'drool';
+  if (m.key === 'happy' && happyMode === 1) return 'content';
+  if (m.key === 'happy' && happyMode === 2) return 'smirk';
+  return m.mouth;
+}
+
+// the part of the eye oval above a horizontal cut, covering `amount` (0..1) of its height
+function lidShape(x, y, rx, ry, amount, color) {
+  const cutY = y - ry + 2 * ry * amount;
+  const t = (cutY - y) / ry;
+  const dx = rx * Math.sqrt(Math.max(0, 1 - t * t));
+  const large = cutY > y ? 1 : 0;
+  return `<path d="M${x - dx} ${cutY} A${rx} ${ry} 0 ${large} 1 ${x + dx} ${cutY}Z" fill="${color}"/>` +
+         `<path d="M${x - dx} ${cutY} L${x + dx} ${cutY}" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/>`;
+}
+
+// eye: white sclera + pupil. kind: 'look' | 'up' | 'lid' | 'heavy' | 'closed' | 'wide'
+function eye(x, y, kind, body) {
+  if (kind === 'daze') {
+    // dazed after the blast: tiny pupils staring straight ahead
+    return `<ellipse cx="${x}" cy="${y}" rx="7.5" ry="11.25" fill="#fff"/>` +
+           `<ellipse cx="${x}" cy="${y + 1}" rx="2" ry="2.8" fill="${INK}"/>`;
+  }
+  if (kind === 'content') {
+    // eyelid fully down with a lash line bowed upward: a satisfied, eyes-closed look
+    return `<ellipse cx="${x}" cy="${y}" rx="7.5" ry="11.25" fill="${body.replace(')', '-lid)')}"/>` +
+           `<path d="M${x - 6.5} ${y + 4} q6.5 -5 13 0" fill="none" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/>`;
+  }
+  if (kind === 'smug') {
+    // half-lidded, pupils sliding to the side and a little up
+    return `<ellipse cx="${x}" cy="${y}" rx="7.5" ry="11.25" fill="#fff"/>` +
+           `<ellipse cx="${x + 3.9}" cy="${y + 1.5}" rx="3.6" ry="5.55" fill="${INK}"/>` +
+           lidShape(x, y, 7.5, 11.25, 0.55, body.replace(')', '-lid)'));
+  }
+  if (kind === 'closed' && sleepMode === 3) {
+    // deep U-shaped closed eye, squarer bottom (tight corners, flat base)
+    return `<path d="M${x - 5} ${y - 5} v5 q0 3 3 3 h4 q3 0 3 -3 v-5" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }
+  if (kind === 'closed' && sleepMode > 0) {
+    // eyelid fully down: the eye oval in the lid shade, with a curved lash line low on it
+    return `<ellipse cx="${x}" cy="${y}" rx="7.5" ry="11.25" fill="${body.replace(')', '-lid)')}"/>` +
+           `<path d="M${x - 6.5} ${y + 3} q6.5 5.5 13 0" fill="none" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/>`;
+  }
+  if (kind === 'closed') {
+    return `<path d="M${x - 6} ${y} q6 5 12 0" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>`;
+  }
+  // shape from eyes.svg: tall white oval (2:3) with a tall oval pupil sitting to the right
+  const rx = 7.5, ry = 11.25, prx = 3.6, pry = 5.55, px = 3.9;
+  const py = kind === 'up' ? -3.7 : kind === 'heavy' ? 1.1 : -0.5;
+  let s = `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="#fff"/>` +
+          `<ellipse cx="${x + px}" cy="${y + py}" rx="${prx}" ry="${pry}" fill="${INK}"/>`;
+  // new eyelids: a solid lid in a darker body shade covering the top of the eye
+  const LID = { lid: 1 / 3, heavy: 1 / 2 };
+  if (useLids && LID[kind]) {
+    return s + lidShape(x, y, rx, ry, LID[kind], body.replace(')', '-lid)'));
+  }
+  if (kind === 'lid' || kind === 'heavy') {
+    const cut = kind === 'heavy' ? 2 : -0.5; // how far the lid comes down
+    s += `<path d="M${x - rx - 1} ${y + cut} A${rx + 1} ${ry + 1} 0 0 1 ${x + rx + 1} ${y + cut} L${x + rx + 1} ${y - ry - 2} L${x - rx - 1} ${y - ry - 2}Z" fill="${body}"/>` +
+         `<path d="M${x - rx} ${y + cut} L${x + rx} ${y + cut}" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/>`;
+  }
+  return s;
+}
+
+function mouth(x, y, kind) {
+  switch (kind) {
+    case 'content': return `<path d="M${x - 6} ${y} q6 6 12 0" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/>`;
+    case 'smirk': return `<path d="M${x - 4} ${y + 1} q5 2.5 9 -3" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/>`;
+    case 'drool': return `<path d="M${x - 4} ${y} h7" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/>` +
+                         `<path d="M${x + 2} ${y + 1} v7" stroke="#fff" stroke-width="3" stroke-linecap="round"/>`;
+    case 'puff':  return `<ellipse cx="${x}" cy="${y + 1}" rx="2.6" ry="3" fill="${INK}"/>` +
+                         `<circle class="puff" cx="${x + 8}" cy="${y - 1}" r="3.2" fill="#a3a8b0"/>`;
+    case 'snore': return `<ellipse cx="${x - 2}" cy="${y + 1}" rx="2.6" ry="3.2" fill="${INK}"/>`;
+    case 'open':  return `<ellipse cx="${x}" cy="${y + 1}" rx="4.2" ry="4.8" fill="${INK}"/>`;
+    case 'smile': return `<path d="M${x - 4} ${y} q4 4 8 0" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/>`;
+    case 'wobble':return `<path d="M${x - 6} ${y + 1} q1.5 -3 3 0 t3 0 t3 0 t3 0" fill="none" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/>`;
+    case 'tiny':  return `<path d="M${x - 2.5} ${y} h5" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/>`;
+    default:      return `<path d="M${x - 4} ${y} h8" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/>`;
+  }
+}
+
+// wick = the candle's upper shadow, worn like a single hair
+function wick(x, top, kind) {
+  const d = {
+    perky: `M${x} ${top + 2} q-3 -12 3 -20`,
+    calm:  `M${x} ${top + 2} q-1 -8 2 -13`,
+    droop: `M${x} ${top + 2} q1 -9 10 -8`,
+    flat:  `M${x} ${top + 2} q6 -4 13 2`,
+    // burnt, frizzled wick after the blast
+    frizz: `M${x} ${top + 2} l-3 -4 l5 -3 l-5 -4 l5 -3 l-3 -4`,
+  }[kind];
+  return `<path d="${d}" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>`;
+}
+
+// mood → look. h = body length (bigger move, longer candle)
+const MOODS = [
+  { key: 'boom',   color: 'up',   h: 100, eye: 'up',    mouth: 'open',   wick: 'perky', anim: 'shake', say: '간다간다간다',     name: '폭등', stock: '로켓바이오', pct: '+18.20%' },
+  { key: 'cheer',  color: 'up',   h: 92, eye: 'up',     mouth: 'open',   wick: 'perky', anim: 'hop',  say: '익절각?',          name: '환호', stock: '에코전지', pct: '+7.84%' },
+  { key: 'happy',  color: 'up',   h: 80, eye: 'up',     mouth: 'smile',  wick: 'perky', anim: 'bob',  say: '오늘 좀 되는데',    name: '신남', stock: '삼성전자', pct: '+3.12%' },
+  { key: 'calm',   color: 'flat', h: 66, eye: 'look',   mouth: 'flat',   wick: 'calm',  anim: 'idle', say: '...',              name: '평온', stock: 'AAPL',    pct: '+0.08%' },
+  { key: 'sulky',  color: 'down', h: 74, eye: 'lid',    mouth: 'tiny',   wick: 'droop', anim: 'idle', say: '존버 중',           name: '시무룩', stock: 'NAVER',  pct: '−1.27%' },
+  { key: 'sad',    color: 'down', h: 82, eye: 'heavy',  mouth: 'wobble', wick: 'droop', anim: 'sway', say: '물타기 할까',       name: '울상', stock: 'TSLA',    pct: '−3.95%' },
+  { key: 'melt',   color: 'down', h: 0,  eye: 'heavy',  mouth: 'wobble', wick: 'flat',  anim: 'melt', say: '계좌가 녹는다',     name: '대성통곡', stock: '카카오', pct: '−8.40%' },
+  { key: 'blast',  color: 'down', h: 70, eye: 'daze',   mouth: 'puff',   wick: 'frizz', anim: 'idle', say: '펑.',               name: '폭락', stock: '불꽃화학', pct: '−14.60%' },
+  { key: 'sleep',  color: 'flat', h: 66, eye: 'closed', mouth: 'tiny',   wick: 'droop', anim: 'idle', say: '장 끝. 퇴근.',      name: '잠', stock: 'NVDA',      pct: '+1.02%' },
+];
+
+function body(m) {
+  const fill = C[m.color];
+  const cx = 60, ground = 132, w = 64;
+  if (m.key === 'melt') {
+    // a candle that has melted into a puddle, two drips on the side
+    const top = 86;
+    const shape =
+      `M${cx - 30} ${ground - 4}` +
+      `C${cx - 30} ${top + 6} ${cx - 22} ${top} ${cx} ${top}` +
+      `C${cx + 22} ${top} ${cx + 30} ${top + 6} ${cx + 30} ${ground - 14}` +
+      `C${cx + 31} ${ground - 6} ${cx + 44} ${ground - 6} ${cx + 48} ${ground - 1}` +
+      `C${cx + 50} ${ground + 3} ${cx + 40} ${ground + 4} ${cx + 20} ${ground + 4}` +
+      `L${cx - 26} ${ground + 4}` +
+      `C${cx - 48} ${ground + 4} ${cx - 52} ${ground} ${cx - 44} ${ground - 3}` +
+      `C${cx - 38} ${ground - 5} ${cx - 30} ${ground - 2} ${cx - 30} ${ground - 4}Z`;
+    const ey = top + 18;
+    return {
+      top,
+      art:
+        `<path d="${shape}" fill="${fill}"/>` +
+        `<path d="M${cx + 30} ${top + 18} q3 8 0 13 q-3 -5 0 -13z" fill="${fill}"/>` +
+        eye(cx - 7.5, ey, m.eye, fill) + eye(cx + 7.5, ey, m.eye, fill) +
+        `<path d="M${cx - 10.5} ${ey + 9} q-2 6 0 9 q2 -3 0 -9z" fill="#8cc4ff"/>` +
+        mouth(cx, ey + 15, m.mouth),
+    };
+  }
+  const h = m.h, top = ground - 10 - h, ey = top + Math.min(30, h * 0.38);
+  return {
+    top,
+    art:
+      // stubby feet = the lower shadow
+      feet(cx, ground, fill) +
+      `<rect x="${cx - w / 2}" y="${top}" width="${w}" height="${h}" rx="22" fill="${fill}"/>` +
+      // two eyes touching, as in eyes.svg
+      eye(cx - 7.5, ey, eyeKind(m), fill) + eye(cx + 7.5, ey, eyeKind(m), fill) +
+      (m.key === 'sad' ? `<path d="M${cx - 10.5} ${ey + 10} q-2.5 6 0 9 q2.5 -3 0 -9z" fill="#8cc4ff"/>` : '') +
+      mouth(cx, ey + 16, mouthKind(m)),
+  };
+}
+
+function extras(m, top) {
+  if (m.key === 'boom') {
+    // lit fuse: a crackling spark at the tip of the wick
+    const sx = 63, sy = top - 18;
+    return `<g class="spark">` +
+             `<path d="M${sx} ${sy - 9} v5 M${sx} ${sy + 4} v5 M${sx - 9} ${sy} h5 M${sx + 4} ${sy} h5 M${sx - 6} ${sy - 6} l3 3 M${sx + 3} ${sy + 3} l3 3 M${sx + 6} ${sy - 6} l-3 3 M${sx - 3} ${sy + 3} l-3 3" stroke="#ff8a00" stroke-width="2" stroke-linecap="round"/>` +
+             `<circle cx="${sx}" cy="${sy}" r="4" fill="#ffb21a"/><circle cx="${sx}" cy="${sy}" r="1.8" fill="#fff4b8"/>` +
+           `</g>`;
+  }
+  if (m.key === 'blast') {
+    // soot smudges on the body + smoke rising from the burnt wick
+    const cx = 60;
+    return `<ellipse cx="${cx - 17}" cy="${top + 13}" rx="9" ry="6" fill="${INK}" fill-opacity=".28"/>` +
+           `<ellipse cx="${cx + 20}" cy="${top + 40}" rx="7" ry="5" fill="${INK}" fill-opacity=".28"/>` +
+           `<ellipse cx="${cx - 8}" cy="${top + m.h - 12}" rx="10" ry="5" fill="${INK}" fill-opacity=".22"/>` +
+           `<circle class="puff" cx="${cx + 4}" cy="${top - 24}" r="4.5" fill="#a3a8b0"/>` +
+           `<circle class="puff p2" cx="${cx + 10}" cy="${top - 32}" r="6" fill="#a3a8b0"/>` +
+           `<circle class="puff p3" cx="${cx + 2}" cy="${top - 40}" r="7" fill="#a3a8b0"/>`;
+  }
+  if (m.key === 'cheer') {
+    return `<path d="M98 ${top + 4} l2.5 7 l7 2.5 l-7 2.5 l-2.5 7 l-2.5 -7 l-7 -2.5 l7 -2.5z" fill="${INK}"/>` +
+           `<path d="M20 ${top + 26} l1.6 4.4 l4.4 1.6 l-4.4 1.6 l-1.6 4.4 l-1.6 -4.4 l-4.4 -1.6 l4.4 -1.6z" fill="${INK}"/>`;
+  }
+  if (m.key === 'sleep') {
+    const ey = top + Math.min(30, m.h * 0.38);
+    const snot = sleepMode === 2
+      ? `<circle cx="70" cy="${ey + 17}" r="6.5" fill="#d6ebff" stroke="#8cc4ff" stroke-width="1.6"/>` +
+        `<circle cx="68" cy="${ey + 15}" r="1.6" fill="#fff"/>`
+      : '';
+    return snot + `<text x="84" y="${top - 2}" font-family="Gaegu" font-weight="700" font-size="20" fill="${INK}">z</text>` +
+           `<text x="96" y="${top - 14}" font-family="Gaegu" font-weight="700" font-size="15" fill="${INK}">z</text>`;
+  }
+  return '';
+}
+
+function render(m) {
+  const b = body(m);
+  const shadow = `<ellipse cx="60" cy="134" rx="${m.key === 'melt' ? 50 : 30}" ry="4" fill="rgba(0,0,0,.10)"/>`;
+  const svg =
+    `<svg viewBox="0 0 120 140" role="img" aria-label="${m.name}">` +
+      shadow +
+      `<g class="${m.anim}"><g filter="url(#boil)">` +
+        (m.key === 'melt' ? '' : wick(60, b.top, m.wick)) +
+        b.art + extras(m, b.top) +
+      `</g></g>` +
+    `</svg>`;
+  const cls = m.color;
+  return `<div class="pet">
+    <div class="bubble">${m.say}</div>
+    ${svg}
+    <div class="tag">${m.stock} <b class="${cls}">${m.pct}</b></div>
+    <div class="name">${m.name}</div>
+  </div>`;
+}
+
+const lidToggle = document.getElementById('lidToggle');
+function draw() {
+  document.getElementById('desk').innerHTML = MOODS.map(render).join('');
+  lidToggle.textContent = useLids ? '눈꺼풀: 새 버전 (눌러서 기존으로)' : '눈꺼풀: 기존 (눌러서 새 버전으로)';
+  feetToggle.textContent = `발: ${FEET[feetMode]} (눌러서 ${FEET[(feetMode + 1) % 3]}으로)`;
+  happyToggle.textContent = `신남 표정: ${HAPPY[happyMode]} (눌러서 ${HAPPY[(happyMode + 1) % 3]}으로)`;
+  if (typeof sleepToggle !== 'undefined') sleepToggle.textContent = `잠 표정: ${SLEEP[sleepMode]} (눌러서 ${SLEEP[(sleepMode + 1) % SLEEP.length]}으로)`;
+}
+const feetToggle = document.getElementById('feetToggle');
+lidToggle.addEventListener('click', () => { useLids = !useLids; draw(); });
+feetToggle.addEventListener('click', () => { feetMode = (feetMode + 1) % 3; draw(); });
+const sleepToggle = document.getElementById('sleepToggle');
+sleepToggle.addEventListener('click', () => { sleepMode = (sleepMode + 1) % SLEEP.length; draw(); });
+const happyToggle = document.getElementById('happyToggle');
+happyToggle.addEventListener('click', () => { happyMode = (happyMode + 1) % 3; draw(); });
+draw();
+
+// "boil": re-seed the noise a few times a second so edges shimmer like a hand-drawn loop
+const turb = document.getElementById('turb');
+let seed = 1;
+if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  setInterval(() => { seed = (seed % 3) + 1; turb.setAttribute('seed', seed); }, 160);
+}
+</script>
+</body>
+</html>

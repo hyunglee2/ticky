@@ -1,0 +1,28 @@
+<svg width="240" height="280" viewBox="0 0 120 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g id="shadow">
+    <ellipse cx="60" cy="134" rx="30" ry="4" fill="#000000" fill-opacity="0.1"/>
+  </g>
+  <g id="wick">
+    <path d="M60 32 Q57 20 63 12" stroke="#1F1F1F" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <g id="feet">
+    <rect x="44" y="118" width="11" height="14" rx="5.5" fill="#F04452"/>
+    <rect x="65" y="118" width="11" height="14" rx="5.5" fill="#F04452"/>
+  </g>
+  <g id="body">
+    <rect x="28" y="30" width="64" height="92" rx="22" fill="#F04452"/>
+  </g>
+  <g id="eyes">
+    <ellipse cx="52.5" cy="60" rx="7.5" ry="11.25" fill="#FFFFFF"/>
+    <ellipse cx="56.4" cy="56.3" rx="3.6" ry="5.55" fill="#1F1F1F"/>
+    <ellipse cx="67.5" cy="60" rx="7.5" ry="11.25" fill="#FFFFFF"/>
+    <ellipse cx="71.4" cy="56.3" rx="3.6" ry="5.55" fill="#1F1F1F"/>
+  </g>
+  <g id="mouth">
+    <ellipse cx="60" cy="77" rx="4.2" ry="4.8" fill="#1F1F1F"/>
+  </g>
+  <g id="sparkles">
+    <path d="M98 34 L100.5 41 L107.5 43.5 L100.5 46 L98 53 L95.5 46 L88.5 43.5 L95.5 41 Z" fill="#1F1F1F"/>
+    <path d="M20 56 L21.6 60.4 L26 62 L21.6 63.6 L20 68 L18.4 63.6 L14 62 L18.4 60.4 Z" fill="#1F1F1F"/>
+  </g>
+</svg>
