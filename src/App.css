@@ -1,0 +1,236 @@
+@import "@fontsource/gaegu/400.css";
+@import "@fontsource/gaegu/700.css";
+
+:root {
+  --up: #f04452;
+  --down: #3182f6;
+  --flat: #c9c1b4;
+  /* eyelid = a slightly darker shade of the body */
+  --up-lid: #c9303d;
+  --down-lid: #2266d0;
+  --flat-lid: #a69d8f;
+  --ink: #1f1f1f;
+  --flat-text: #8a8378;
+  font-family: "Gaegu", system-ui, sans-serif;
+  color: var(--ink);
+}
+
+* { box-sizing: border-box; }
+
+/* the window itself is transparent: only the Tickies and their labels show on the desktop */
+html, body, #root {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+}
+
+.defs { position: absolute; }
+
+/* the stage is laid out at its base size (see src/scale.ts) and scaled as one piece */
+.desk {
+  width: 600px;
+  height: 270px;
+  transform: scale(var(--scale, 1));
+  transform-origin: 0 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 0 8px 6px;
+}
+
+.pets {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.pet {
+  position: relative;
+  width: 104px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.bubble {
+  position: relative;
+  min-height: 22px;
+  padding: 1px 8px 3px;
+  margin-bottom: 3px;
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 13px 11px 14px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 8px;
+  height: 8px;
+  background: #fff;
+  border-right: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+  transform: translateX(-50%) rotate(45deg) skew(8deg, 8deg);
+}
+
+.art { width: 88px; height: 102px; }
+.art svg { width: 100%; height: 100%; overflow: visible; }
+
+.tag {
+  margin-top: 1px;
+  padding: 0 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.82);
+  border-radius: 8px;
+  white-space: nowrap;
+}
+.up { color: var(--up); }
+.down { color: var(--down); }
+.flat { color: var(--flat-text); }
+
+.remove {
+  position: absolute;
+  top: 22px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  font: 700 13px/1 "Gaegu", sans-serif;
+  color: var(--ink);
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+/* hover card: price, change and today's path */
+.card {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 128px;
+  padding: 6px 6px 4px;
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 11px;
+  z-index: 2;
+}
+.card-top { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; }
+.card-mood { color: #777; font-weight: 400; }
+.card-price { font-size: 17px; font-weight: 700; line-height: 1.1; }
+.card-change { font-size: 12px; font-weight: 700; }
+.sparkline { display: block; margin-top: 2px; }
+
+/* toolbar: drag grip, add, settings */
+.toolbar {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 26px;
+}
+.grip {
+  width: 22px;
+  padding: 1px 0;
+  text-align: center;
+  font-size: 13px;
+  color: #777;
+  background: rgba(255, 255, 255, 0.82);
+  border-radius: 8px;
+  cursor: grab;
+}
+.tool {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font: 700 13px/1 "Gaegu", sans-serif;
+  color: var(--ink);
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 7px;
+  cursor: pointer;
+}
+.tool:disabled { opacity: 0.4; cursor: default; }
+.panel {
+  position: absolute;
+  left: 30px;
+  bottom: 0;
+  width: 260px;
+  padding: 8px;
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 11px;
+  font-size: 14px;
+  z-index: 3;
+}
+form.panel { display: flex; gap: 6px; }
+.panel input[type="text"], .panel input:not([type]) {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 6px;
+  font: 400 14px "Gaegu", sans-serif;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+}
+.panel button {
+  padding: 1px 8px;
+  font: 700 14px "Gaegu", sans-serif;
+  color: #fff;
+  background: var(--ink);
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.panel label { display: flex; gap: 6px; align-items: center; }
+.sizes { display: flex; flex-wrap: nowrap; gap: 4px; align-items: center; margin-bottom: 6px; white-space: nowrap; }
+.sizes span { font-weight: 700; margin-right: 2px; }
+.panel .sizes button { color: var(--ink); background: #fff; border: 2px solid var(--ink); padding: 0 6px; }
+.panel .sizes button.on { color: #fff; background: var(--ink); }
+.hint { margin: 6px 0 0; font-size: 15px; color: #777; }
+.empty { margin: 0 0 60px; font-size: 19px; font-weight: 700; background: rgba(255,255,255,.82); padding: 4px 10px; border-radius: 10px; }
+
+/* motion (from design/character-lab.html) */
+.hop   { animation: hop 0.9s cubic-bezier(.3,0,.4,1) infinite; transform-origin: 60px 132px; }
+.bob   { animation: bob 1.6s ease-in-out infinite; transform-origin: 60px 132px; }
+.idle  { animation: breathe 3.2s ease-in-out infinite; transform-origin: 60px 132px; }
+.sway  { animation: sway 3.6s ease-in-out infinite; transform-origin: 60px 132px; }
+.melt  { animation: melt 2.8s ease-in-out infinite; transform-origin: 60px 132px; }
+.shake { animation: shake 0.12s linear infinite; transform-origin: 60px 132px; }
+g.spark { animation: spark 0.16s steps(2) infinite alternate; transform-box: fill-box; transform-origin: center; }
+.puff  { animation: puff 2.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+.puff.p2 { animation-delay: .8s; }
+.puff.p3 { animation-delay: 1.6s; }
+@keyframes hop {
+  0%, 100% { transform: translateY(0) scale(1.06, 0.92); }
+  15% { transform: translateY(0) scale(0.94, 1.08); }
+  45% { transform: translateY(-26px) scale(0.97, 1.04); }
+  75% { transform: translateY(0) scale(1.08, 0.9); }
+}
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+@keyframes breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.02, 0.97); } }
+@keyframes sway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(2deg); } }
+@keyframes melt { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.04, 0.95); } }
+@keyframes shake {
+  0%   { transform: translate(0, 0) rotate(0); }
+  25%  { transform: translate(-1.2px, 0.6px) rotate(-1deg); }
+  50%  { transform: translate(1px, -0.6px) rotate(1deg); }
+  75%  { transform: translate(-0.6px, -0.8px) rotate(-0.5deg); }
+  100% { transform: translate(0.8px, 0.6px) rotate(0.6deg); }
+}
+@keyframes spark { from { transform: scale(0.8) rotate(0); } to { transform: scale(1.25) rotate(20deg); } }
+@keyframes puff { 0% { opacity: 0; transform: translateY(6px) scale(.6); } 25% { opacity: .75; } 100% { opacity: 0; transform: translateY(-14px) scale(1.2); } }
+@media (prefers-reduced-motion: reduce) {
+  .hop, .bob, .idle, .sway, .melt, .shake, g.spark, .puff { animation: none; }
+}
