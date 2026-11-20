@@ -33,39 +33,99 @@ html, body, #root {
   user-select: none;
 }
 
-/* content sits at the bottom-left; the window resizes itself to fit it (useAutoWindowSize) */
+/* the window spans the bottom of the screen; its height follows the content (useDockHeight) */
 .desk {
-  width: max-content;
-  height: 100%;
-  display: flex;
-  align-items: flex-end;
-  gap: calc(6 * var(--u));
-  padding: 0 6px 6px;
-}
-
-.pets {
-  height: 100%;
-  display: flex;
-  align-items: flex-end;
-  gap: calc(2 * var(--p));
-}
-
-.pet {
   position: relative;
-  min-width: calc(104 * var(--p));
-  padding: 0 2px;
+  width: 100%;
+  height: 100%;
+}
+
+.pets { position: absolute; inset: 0; }
+
+/* each Ticky stands on its name tag at the bottom edge; roam.ts moves it sideways with
+   translateX. Fixed width, so a wide speech bubble never shifts the body. */
+.pet {
+  position: absolute;
+  left: 0;
+  bottom: 2px;
+  width: calc(104 * var(--p));
   display: flex;
   flex-direction: column;
   align-items: center;
+  will-change: transform;
+}
+.pet:hover { z-index: 5; }
+
+/* face the way it's going (everything below mirrors with it) */
+.pet[data-dir="left"] .art svg { transform: scaleX(-1); }
+
+/* walking: a 4-beat walk cycle instead of one bounce.
+   --step  one full cycle; --half  half a stride (SVG units). roam.ts sets both from the ground
+   speed so the planted foot moves back exactly as fast as the Ticky moves on (no sliding). */
+.pet[data-walking="1"] .art svg > g { animation: none; } /* mood motion pauses while walking */
+.pet[data-walking="1"] .foot { animation: foot var(--step, 0.45s) linear infinite; }
+.pet[data-walking="1"] .foot-r { animation-delay: calc(var(--step, 0.45s) / -2); }
+.pet[data-walking="1"] .upper {
+  animation: stride var(--step, 0.45s) ease-in-out infinite;
+  transform-origin: 60px 124px;
+}
+.pet[data-walking="1"] .wick {
+  animation: trail var(--step, 0.45s) ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: 20% 100%;
+}
+@keyframes foot {
+  0%   { transform: translate(var(--half, 3px), 0); }                        /* heel down in front */
+  50%  { transform: translate(calc(var(--half, 3px) * -1), 0); }             /* planted, pushed back */
+  62%  { transform: translate(calc(var(--half, 3px) * -0.7), -4px); }        /* toe off, lift */
+  88%  { transform: translate(calc(var(--half, 3px) * 0.7), -4px); }         /* swing forward */
+  100% { transform: translate(var(--half, 3px), 0); }                        /* plant again */
+}
+@keyframes stride {
+  /* low on each footfall, high mid-stance; leaning into the walk */
+  0%, 50%, 100% { transform: translateY(0) rotate(3deg); }
+  25%, 75%      { transform: translateY(-2.5px) rotate(4.5deg); }
+}
+@keyframes trail {
+  /* the wick lags behind the body */
+  0%, 50%, 100% { transform: rotate(-9deg); }
+  25%, 75%      { transform: rotate(-3deg); }
 }
 
 /* ── Ticky-sized parts: follow the size setting ── */
+/* the drawing plus everything anchored to the head (tag, bubble, hover card, ×) */
+.figure { position: relative; z-index: 1; }
+
+/* the name tag sits right under the feet, like the ground the Ticky stands on */
+.art svg > ellipse:first-child { display: none; } /* the tag takes the ground shadow's place */
+.pet > .tag {
+  position: relative;
+  z-index: 0;
+  margin-top: calc(-5.8 * var(--p)); /* the SVG has 8 units below the feet: 8 × 102/140 */
+}
+
+/* above the head: the speech bubble, now and then. --head is the head's height in SVG units
+   (Pet.tsx), so it hugs every mood's body length. */
+.above {
+  position: absolute;
+  bottom: calc(var(--head) * 102 / 140 * var(--p) + 2px);
+  left: 50%;
+  translate: -50% 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45em;
+  pointer-events: none;
+}
+
+/* speech bubble: pops up now and then (Pet.tsx useChatter) */
 .bubble {
   position: relative;
   min-height: 1.7em;
   padding: 0.08em 0.6em 0.25em;
-  margin-bottom: 0.25em;
   background: #fff;
+  transform-origin: 50% 120%;
+  animation: pop 0.32s cubic-bezier(0.2, 1.6, 0.4, 1) both;
   border: 2px solid var(--ink);
   border-radius: 1em 0.85em 1.08em 0.77em;
   font-size: calc(13 * var(--p));
@@ -86,22 +146,24 @@ html, body, #root {
   transform: translateX(-50%) rotate(45deg) skew(8deg, 8deg);
 }
 
+@keyframes pop {
+  from { scale: 0.2; opacity: 0; }
+  to   { scale: 1; opacity: 1; }
+}
+
 .art { width: calc(88 * var(--p)); height: calc(102 * var(--p)); }
 .art svg { width: 100%; height: 100%; overflow: visible; }
 
 /* ── text-sized parts: follow Windows' text size ── */
 .tag {
-  margin-top: 1px;
   padding: 0 calc(6 * var(--u));
   font-size: calc(12.5 * var(--u));
   font-weight: 700;
-  background: rgba(255, 255, 255, 0.82);
+  line-height: 1.35;
+  background: rgba(255, 255, 255, 0.85);
   border-radius: calc(8 * var(--u));
   white-space: nowrap;
 }
-.up { color: var(--up); }
-.down { color: var(--down); }
-.flat { color: var(--flat-text); }
 .session {
   margin-left: 3px;
   padding: 0 calc(4 * var(--u));
@@ -111,11 +173,14 @@ html, body, #root {
   border-radius: 6px;
   vertical-align: 1px;
 }
+.up { color: var(--up); }
+.down { color: var(--down); }
+.flat { color: var(--flat-text); }
 
 .remove {
   position: absolute;
-  top: calc(24 * var(--p));
-  right: 2px;
+  top: calc(10 * var(--p));
+  right: 0;
   width: calc(18 * var(--u));
   height: calc(18 * var(--u));
   padding: 0;
@@ -127,10 +192,10 @@ html, body, #root {
   cursor: pointer;
 }
 
-/* hover card: price, change and today's path */
+/* hover card: price, change and today's path (covers the name tag while open) */
 .card {
   position: absolute;
-  bottom: calc(100% + 6px);
+  bottom: calc(var(--head) * 102 / 140 * var(--p) + 2px);
   left: 50%;
   transform: translateX(-50%);
   width: calc(128 * var(--u));
@@ -154,24 +219,16 @@ html, body, #root {
   text-overflow: ellipsis;
 }
 
-/* toolbar: drag grip, watchlist, settings */
+/* toolbar: watchlist + settings, tucked in the bottom-right corner */
 .toolbar {
-  position: relative;
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: calc(4 * var(--u));
-  margin-bottom: calc(22 * var(--u));
-}
-.grip {
-  width: calc(22 * var(--u));
-  padding: 1px 0;
-  text-align: center;
-  font-size: calc(13 * var(--u));
-  color: #777;
-  background: rgba(255, 255, 255, 0.82);
-  border-radius: 8px;
-  cursor: grab;
+  z-index: 6;
 }
 .tool {
   width: calc(22 * var(--u));
@@ -188,7 +245,7 @@ html, body, #root {
 
 .panel {
   position: absolute;
-  left: calc(30 * var(--u));
+  right: calc(30 * var(--u));
   bottom: 0;
   width: calc(260 * var(--u));
   padding: calc(8 * var(--u));
@@ -290,7 +347,10 @@ html, body, #root {
 .panel .row-delete:hover { color: var(--up); border-color: var(--up); }
 
 .empty {
-  margin: 0 0 calc(40 * var(--u));
+  position: absolute;
+  right: calc(40 * var(--u));
+  bottom: 8px;
+  margin: 0;
   font-size: calc(15 * var(--u));
   font-weight: 700;
   background: rgba(255, 255, 255, 0.82);
@@ -301,10 +361,13 @@ html, body, #root {
 
 /* first run: pick a market */
 .onboard {
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  transform: translateX(-50%);
   display: flex;
   align-items: flex-end;
   gap: calc(6 * var(--u));
-  margin-bottom: 4px;
 }
 .onboard-art { width: calc(70 * var(--p)); height: calc(82 * var(--p)); flex: none; }
 .onboard-art svg { width: 100%; height: 100%; overflow: visible; }
@@ -376,5 +439,5 @@ g.spark { animation: spark 0.16s steps(2) infinite alternate; transform-box: fil
 @keyframes spark { from { transform: scale(0.8) rotate(0); } to { transform: scale(1.25) rotate(20deg); } }
 @keyframes puff { 0% { opacity: 0; transform: translateY(6px) scale(.6); } 25% { opacity: .75; } 100% { opacity: 0; transform: translateY(-14px) scale(1.2); } }
 @media (prefers-reduced-motion: reduce) {
-  .hop, .bob, .idle, .sway, .melt, .shake, g.spark, .puff { animation: none; }
+  .hop, .bob, .idle, .sway, .melt, .shake, g.spark, .puff, .bubble { animation: none; }
 }

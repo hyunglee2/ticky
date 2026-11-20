@@ -27,7 +27,6 @@ export function Toolbar({ watch, followHours, onFollowHours, scale, onScale, sta
 
   return (
     <div className="toolbar">
-      <div className="grip" data-tauri-drag-region title="끌어서 옮기기">⋮⋮</div>
       <button
         type="button"
         className={`tool ${panel === "list" ? "on" : ""}`}

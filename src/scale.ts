@@ -2,10 +2,9 @@
 //   --s  the size setting: scales only the Tickies and their speech bubbles (so they can be kept
 //        small and inconspicuous at work)
 //   --t  text scale from Windows' "Text size" setting: name tags, cards and panels follow the PC
-// The desktop window shrinks and grows to fit what is on screen, keeping its bottom-right corner.
+// The desktop window spans the bottom of the screen; its height follows what is on screen.
 import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { getCurrentWindow, LogicalSize, PhysicalPosition } from "@tauri-apps/api/window";
 import { inTauri } from "./clickThrough";
 
 export const SCALES = [
@@ -33,52 +32,63 @@ export function useTextScale() {
 }
 
 // everything that can stick out of the window: Tickies (with bubbles), toolbar, cards, panels
-const CONTENT = ".pet, .card, .toolbar, .panel, .onboard, .empty";
-const MARGIN = 6;     // breathing room around the content, in CSS px
-const SHRINK_MS = 700; // wait before shrinking, so hovering in and out doesn't make it jitter
+const CONTENT = ".pet, .above, .card, .toolbar, .panel, .onboard, .empty";
+const MARGIN = 6;      // breathing room around the content, in CSS px
+const SHRINK_MS = 1500; // wait before shrinking (after a panel closes)
+const CARD_EST = 140;  // hover card height in text units, until a real one has been measured
 
 /**
- * Content is anchored to the bottom-left of the window, so anything taller than the window
- * pokes out of the top. Measure that and resize the window to fit, growing at once and
- * shrinking after a short pause. The bottom-right corner stays where the user put it.
+ * Resizing a transparent window makes Windows repaint it, which shows as a flicker. So the
+ * height always leaves room above every head for the hover card (taller than any speech
+ * bubble): hovering and chatter never resize the window, only opening a panel does.
  */
-export function useAutoWindowSize() {
+let cardHeight = 0;
+function reservedTop(): number {
+  const card = document.querySelector(".card");
+  if (card) cardHeight = Math.max(cardHeight, card.getBoundingClientRect().height);
+  const t = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--t")) || 1;
+  const s = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--s")) || 1;
+  // never less than the estimate, so measuring the first real card doesn't cause a resize either
+  const h = Math.max(cardHeight, CARD_EST * t);
+  let top = Infinity;
+  for (const fig of document.querySelectorAll<HTMLElement>(".figure")) {
+    const head = parseFloat(fig.style.getPropertyValue("--head")) || 100; // SVG units
+    const anchor = fig.getBoundingClientRect().bottom - (head * 102 / 140) * s - 2;
+    top = Math.min(top, anchor - h);
+  }
+  return top;
+}
+
+/**
+ * The window is docked full-width along the bottom of the screen (Rust: dock_bottom) and its
+ * content is anchored to the bottom, so anything taller than the window pokes out of the top.
+ * Measure that and ask Rust for the height that fits: grow at once, shrink after a short pause.
+ */
+export function useDockHeight() {
   useEffect(() => {
     if (!inTauri()) return;
-    const win = getCurrentWindow();
     let busy = false;
     let shrinkSince = 0;
 
     const tick = async () => {
       if (busy) return;
-      const els = [...document.querySelectorAll(CONTENT)];
-      if (els.length === 0) return;
-      let top = Infinity, right = 0;
-      for (const el of els) {
+      let top = reservedTop();
+      for (const el of document.querySelectorAll(CONTENT)) {
         const r = el.getBoundingClientRect();
         if (r.width === 0 && r.height === 0) continue;
         top = Math.min(top, r.top);
-        right = Math.max(right, r.right);
       }
       if (!Number.isFinite(top)) return;
-      const needW = Math.ceil(right + MARGIN);
-      const needH = Math.ceil(window.innerHeight - top + MARGIN);
-      const dw = needW - window.innerWidth, dh = needH - window.innerHeight;
-      if (Math.abs(dw) <= 2 && Math.abs(dh) <= 2) { shrinkSince = 0; return; }
-      const growing = dw > 2 || dh > 2;
-      if (!growing) {
+      const needH = Math.max(80, Math.ceil(window.innerHeight - top + MARGIN));
+      const dh = needH - window.innerHeight;
+      if (Math.abs(dh) <= 2) { shrinkSince = 0; return; }
+      if (dh < 0) {
         if (!shrinkSince) { shrinkSince = Date.now(); return; }
         if (Date.now() - shrinkSince < SHRINK_MS) return;
       }
       shrinkSince = 0;
       busy = true;
-      try {
-        const [pos, size] = await Promise.all([win.outerPosition(), win.outerSize()]);
-        const right0 = pos.x + size.width, bottom0 = pos.y + size.height;
-        await win.setSize(new LogicalSize(Math.max(needW, 120), Math.max(needH, 80)));
-        const next = await win.outerSize();
-        await win.setPosition(new PhysicalPosition(right0 - next.width, bottom0 - next.height));
-      } catch { /* window API unavailable: leave the size as it is */ }
+      try { await invoke("dock_bottom", { height: needH }); } catch { /* leave it */ }
       busy = false;
     };
 

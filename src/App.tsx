@@ -6,7 +6,8 @@ import { createHybridFeed } from "./market/hybridFeed";
 import { isMarketOpen } from "./market/hours";
 import { isKrx, type FeedStatus, type Quote } from "./market/types";
 import { bandMood, pickLine, type MoodKey } from "./ticky/moods";
-import { useAutoWindowSize, useTextScale, useTickyScale } from "./scale";
+import { useDockHeight, useTextScale, useTickyScale } from "./scale";
+import { useRoaming } from "./roam";
 import { inTauri, useClickThroughRegions } from "./clickThrough";
 import { useWatchlist } from "./watchlist";
 import "./App.css";
@@ -46,11 +47,10 @@ export default function App() {
   useEffect(() => save("ticky.scale", scale), [scale]);
   useTickyScale(scale);
   useTextScale();
-  useAutoWindowSize();
+  useDockHeight();
   useClickThroughRegions();
 
   useEffect(() => save("ticky.followHours", followHours), [followHours]);
-
   // only the stocks shown on screen are polled; keyed by symbols so a re-render doesn't resubscribe
   const shownKey = watch.shown.map((e) => e.symbol).join(",");
   const shown = useMemo(() => watch.shown, [shownKey]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -94,8 +94,15 @@ export default function App() {
     if (changed) setPets(next);
   }, [quotes, shown, followHours, status, liveEnabled]);
 
+  // Tickies wander along the bottom of the screen at a pace set by their mood
+  const moods = useMemo(
+    () => Object.fromEntries(Object.entries(pets).map(([symbol, p]) => [symbol, p.mood])),
+    [pets],
+  );
+  useRoaming(moods);
+
   return (
-    <main className="desk" data-tauri-drag-region>
+    <main className="desk">
       {!watch.ready && <Onboarding onPick={watch.start} />}
       {watch.ready && (
         <>
@@ -107,7 +114,7 @@ export default function App() {
             onScale={setScale}
             status={status}
           />
-          <div className="pets" data-tauri-drag-region>
+          <div className="pets">
             {shown.map((item) => {
               const p = pets[item.symbol];
               return p ? (

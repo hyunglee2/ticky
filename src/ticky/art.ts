@@ -154,6 +154,7 @@ function body(mood: MoodKey, look: Look, tone: Tone) {
       `C${cx - 38} ${ground - 5} ${cx - 30} ${ground - 2} ${cx - 30} ${ground - 4}Z`;
     return {
       top,
+      feet: "",
       art: `<path d="${shape}" fill="${fill}"/>` +
         `<path d="M${cx + 30} ${top + 18} q3 8 0 13 q-3 -5 0 -13z" fill="${fill}"/>` +
         eye(cx - 7.5, ey, look.eye, tone) + eye(cx + 7.5, ey, look.eye, tone) +
@@ -164,15 +165,29 @@ function body(mood: MoodKey, look: Look, tone: Tone) {
   const h = look.h, top = ground - 10 - h, ey = top + Math.min(30, h * 0.38);
   return {
     top,
+    // black capsule feet = the lower shadow; separate parts so each can step on its own
+    feet:
+      `<rect class="foot foot-l" x="${cx - 16}" y="${ground - 14}" width="11" height="14" rx="5.5" fill="${INK}"/>` +
+      `<rect class="foot foot-r" x="${cx + 5}" y="${ground - 14}" width="11" height="14" rx="5.5" fill="${INK}"/>`,
     art:
-      // black capsule feet = the lower shadow
-      `<rect x="${cx - 16}" y="${ground - 14}" width="11" height="14" rx="5.5" fill="${INK}"/>` +
-      `<rect x="${cx + 5}" y="${ground - 14}" width="11" height="14" rx="5.5" fill="${INK}"/>` +
       `<rect x="${cx - w / 2}" y="${top}" width="${w}" height="${h}" rx="22" fill="${fill}"/>` +
       eye(cx - 7.5, ey, look.eye, tone) + eye(cx + 7.5, ey, look.eye, tone) +
       (mood === "sad" ? TEAR_AT(cx - 10.5, ey + 10) : "") +
       mouth(cx, ey + 16, look.mouth),
   };
+}
+
+/**
+ * Highest drawn point of the Ticky (top of the wick, spark or smoke), in SVG units
+ * (the viewBox is 0..140 tall, feet stand at y=132). Lets the name tag sit right on the head.
+ */
+export function headTop(mood: MoodKey): number {
+  const look = LOOKS[mood];
+  if (mood === "melt") return 86 - 6;
+  const top = 122 - look.h;
+  const reach = { boom: 31, blast: 48, sleep: 30, offline: 14 } as Partial<Record<MoodKey, number>>;
+  const wickReach = look.wick === "perky" ? 22 : look.wick === "frizz" ? 20 : look.wick === "calm" ? 15 : 12;
+  return top - Math.max(wickReach, reach[mood] ?? 0);
 }
 
 /**
@@ -186,7 +201,10 @@ export function tickySvg(mood: MoodKey, tone: Tone, label: string, filterId?: st
   return `<svg viewBox="0 0 120 140" role="img" aria-label="${label}" overflow="visible">` +
     `<ellipse cx="60" cy="134" rx="${wide ? 50 : 30}" ry="4" fill="rgba(0,0,0,.10)"/>` +
     `<g class="${look.anim}"${mood === "offline" ? ' opacity="0.5"' : ""}><g${filterId ? ` filter="url(#${filterId})"` : ""}>` +
-    (wide ? "" : wick(60, b.top, look.wick)) +
+    // walking animates these parts separately (App.css: feet step, upper body bobs, wick sways)
+    b.feet +
+    `<g class="upper">` +
+    (wide ? "" : `<g class="wick">${wick(60, b.top, look.wick)}</g>`) +
     b.art + extras(mood, b.top, look.h) +
-    `</g></g></svg>`;
+    `</g></g></g></svg>`;
 }

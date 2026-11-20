@@ -6,7 +6,7 @@ use std::{sync::Mutex, thread, time::Duration};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    AppHandle, Manager, PhysicalPosition,
+    AppHandle, Manager, PhysicalPosition, PhysicalSize,
 };
 
 /// Areas of the window (in logical px, `[left, top, width, height]`) that should catch the mouse:
@@ -19,6 +19,41 @@ fn set_hit_regions(state: tauri::State<HitRegions>, rects: Vec<[f64; 4]>) {
     if let Ok(mut regions) = state.0.lock() {
         *regions = rects;
     }
+}
+
+/// Let clicks pass through the window, or not.
+///
+/// On Windows this flips only `WS_EX_TRANSPARENT` and keeps `WS_EX_LAYERED` on for good.
+/// tao's `set_ignore_cursor_events` adds and removes both flags and forces a frame change,
+/// which makes Windows re-render the transparent window: a visible flash every time the
+/// cursor enters or leaves a Ticky. Windows reads `WS_EX_TRANSPARENT` on each hit test, so
+/// flipping it alone takes effect at once with no repaint.
+#[cfg(windows)]
+fn set_click_through(window: &tauri::WebviewWindow, through: bool) -> bool {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_LAYERED, WS_EX_TRANSPARENT,
+    };
+    let Ok(hwnd) = window.hwnd() else { return false };
+    let hwnd = hwnd.0 as _;
+    // SAFETY: plain style read/write on our own top-level window handle
+    unsafe {
+        let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+        let mut next = ex | WS_EX_LAYERED as isize;
+        if through {
+            next |= WS_EX_TRANSPARENT as isize;
+        } else {
+            next &= !(WS_EX_TRANSPARENT as isize);
+        }
+        if next != ex {
+            SetWindowLongPtrW(hwnd, GWL_EXSTYLE, next);
+        }
+    }
+    true
+}
+
+#[cfg(not(windows))]
+fn set_click_through(window: &tauri::WebviewWindow, through: bool) -> bool {
+    window.set_ignore_cursor_events(through).is_ok()
 }
 
 /// Is the window's centre on any monitor? Windows can park windows far off-screen
@@ -38,7 +73,7 @@ fn is_on_screen(window: &tauri::WebviewWindow) -> bool {
 }
 
 /// Watch the cursor and let the window ignore mouse events unless it is over a hit region.
-/// Every ~2 s also bring the window back if it has ended up off-screen.
+/// Every ~2 s also re-dock the window if it has ended up off-screen.
 fn start_click_through(app: AppHandle) {
     thread::spawn(move || {
         let mut ignoring: Option<bool> = None;
@@ -48,7 +83,7 @@ fn start_click_through(app: AppHandle) {
             let Some(window) = app.get_webview_window("main") else { continue };
             tick = tick.wrapping_add(1);
             if tick % 50 == 0 && window.is_visible().unwrap_or(false) && !is_on_screen(&window) {
-                let _ = place_bottom_right(&app);
+                let _ = dock_to_bottom(&app, None);
             }
             let (Ok(cursor), Ok(origin), Ok(scale)) =
                 (app.cursor_position(), window.inner_position(), window.scale_factor())
@@ -64,7 +99,7 @@ fn start_click_through(app: AppHandle) {
                 .map(|r| r.iter().any(|[l, t, w, h]| x >= *l && x <= l + w && y >= *t && y <= t + h))
                 .unwrap_or(true);
             let ignore = !over;
-            if ignoring != Some(ignore) && window.set_ignore_cursor_events(ignore).is_ok() {
+            if ignoring != Some(ignore) && set_click_through(&window, ignore) {
                 ignoring = Some(ignore);
             }
         }
@@ -99,18 +134,31 @@ fn toggle_window(app: &AppHandle) {
     }
 }
 
-/// Park the window at the bottom-right of the screen, just above the taskbar.
-fn place_bottom_right(app: &AppHandle) -> tauri::Result<()> {
+/// Dock the window along the bottom of the screen, full width, just above the taskbar, so the
+/// Tickies can wander the whole bottom edge. `height` is in logical px; `None` keeps the current one.
+fn dock_to_bottom(app: &AppHandle, height: Option<f64>) -> tauri::Result<()> {
     let Some(window) = app.get_webview_window("main") else { return Ok(()) };
     // an off-screen window may have no current monitor; fall back to the primary one
     let monitor = if is_on_screen(&window) { window.current_monitor()? } else { None };
     let Some(monitor) = monitor.or(window.primary_monitor()?) else { return Ok(()) };
     let work = monitor.work_area();
-    let size = window.outer_size()?;
-    let x = work.position.x + work.size.width as i32 - size.width as i32 - 16;
-    let y = work.position.y + work.size.height as i32 - size.height as i32;
-    window.set_position(PhysicalPosition::new(x, y))?;
+    let h = match height {
+        Some(h) => (h * monitor.scale_factor()).round().max(1.0) as u32,
+        None => window.outer_size()?.height,
+    };
+    let h = h.min(work.size.height);
+    window.set_size(PhysicalSize::new(work.size.width, h))?;
+    window.set_position(PhysicalPosition::new(
+        work.position.x,
+        work.position.y + work.size.height as i32 - h as i32,
+    ))?;
     Ok(())
+}
+
+/// Called by the UI whenever what's on screen needs a different height (cards, panels, size setting).
+#[tauri::command]
+fn dock_bottom(app: AppHandle, height: f64) {
+    let _ = dock_to_bottom(&app, Some(height));
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -120,6 +168,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             set_hit_regions,
             text_scale,
+            dock_bottom,
             yahoo::fetch_yahoo_quotes,
             naver::fetch_naver_quotes,
             search::search_stocks
@@ -136,7 +185,7 @@ pub fn run() {
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "toggle" => toggle_window(app),
                     "reset" => {
-                        let _ = place_bottom_right(app);
+                        let _ = dock_to_bottom(app, None);
                     }
                     "quit" => app.exit(0),
                     _ => {}
@@ -146,7 +195,7 @@ pub fn run() {
             }
             tray.build(app)?;
 
-            place_bottom_right(app.handle())?;
+            dock_to_bottom(app.handle(), None)?;
             start_click_through(app.handle().clone());
             Ok(())
         })
