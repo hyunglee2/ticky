@@ -1,7 +1,7 @@
 // Mood engine: today's % change → one of 9 market moods, plus special states.
 export type MoodKey =
   | "boom" | "cheer" | "happy" | "good" | "calm" | "sulky" | "sad" | "melt" | "blast"
-  | "sleep" | "shock" | "offline";
+  | "sleep" | "shock" | "offline" | "alarm";
 
 export type Tone = "up" | "down" | "flat";
 
@@ -37,12 +37,13 @@ export function moodName(mood: MoodKey): string {
   if (mood === "sleep") return "잠";
   if (mood === "shock") return "놀람";
   if (mood === "offline") return "연결 끊김";
+  if (mood === "alarm") return "비상";
   return BANDS.find((b) => b.mood === mood)?.name ?? "";
 }
 
 export function moodTone(mood: MoodKey, pct: number): Tone {
   if (mood === "sleep" || mood === "offline") return "flat";
-  if (mood === "shock") return toneFor(pct);
+  if (mood === "shock" || mood === "alarm") return toneFor(pct);
   return BANDS.find((b) => b.mood === mood)?.tone ?? "flat";
 }
 
@@ -60,6 +61,8 @@ const LINES: Record<MoodKey, string[]> = {
   sleep: ["장 끝. 퇴근.", "내일 보자"],
   shock: ["어?!", "뭐야 뭐야"],
   offline: ["연결이 끊겼어", "어디 갔지?"],
+  // the first alarm line is always the specific reason (App.tsx); these follow while it lasts
+  alarm: ["비상! 비상!", "삐뽀삐뽀", "다들 봐봐!"],
 };
 
 export function pickLine(mood: MoodKey): string {

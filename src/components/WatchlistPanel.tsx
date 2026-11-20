@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { inTauri } from "../clickThrough";
+import { isKrx } from "../market/types";
 import { MAX_LIST, MAX_SHOWN, STARTERS, type AddResult, type Watchlist } from "../watchlist";
 
 interface Hit { symbol: string; name: string; market: "KR" | "US"; exchange: string }
@@ -68,6 +69,27 @@ export function WatchlistPanel({ watch }: { watch: Watchlist }) {
     if (!watch.setShown(symbol, shown)) say(`화면에는 최대 ${MAX_SHOWN}개까지 띄울 수 있어요. 하나를 먼저 내려 주세요`);
   };
 
+  // target / stop price editor, one stock at a time
+  const [editing, setEditing] = useState<string | null>(null);
+  const [targetText, setTargetText] = useState("");
+  const [stopText, setStopText] = useState("");
+  const openAlerts = (symbol: string, target?: number, stop?: number) => {
+    if (editing === symbol) { setEditing(null); return; }
+    setEditing(symbol);
+    setTargetText(target ? String(target) : "");
+    setStopText(stop ? String(stop) : "");
+  };
+  const parsePrice = (text: string) => {
+    const n = Number(text.replace(/[,\s원$]/g, ""));
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  };
+  const saveAlerts = (symbol: string) => {
+    const target = parsePrice(targetText), stop = parsePrice(stopText);
+    watch.setAlerts(symbol, target, stop);
+    setEditing(null);
+    say(target || stop ? "알림을 설정했어요. 가격에 닿으면 티키가 비상을 울려요" : "알림을 지웠어요");
+  };
+
   const listed = new Set(watch.entries.map((e) => e.symbol));
 
   return (
@@ -105,23 +127,40 @@ export function WatchlistPanel({ watch }: { watch: Watchlist }) {
       </div>
       <ul className="list">
         {watch.entries.map((e, i) => (
-          <li
-            key={e.symbol}
-            className={dragFrom === i ? "dragging" : ""}
-            draggable
-            onDragStart={() => setDragFrom(i)}
-            onDragOver={(ev) => ev.preventDefault()}
-            onDrop={() => { if (dragFrom !== null) watch.move(dragFrom, i); setDragFrom(null); }}
-            onDragEnd={() => setDragFrom(null)}
-          >
-            <span className="handle" title="끌어서 순서 바꾸기">⋮⋮</span>
-            <label className="row-main">
-              <input type="checkbox" checked={e.shown} onChange={(ev) => toggle(e.symbol, ev.target.checked)} />
-              <span className="row-name">{e.name}</span>
-              <span className="row-symbol">{e.symbol}</span>
-            </label>
-            <button type="button" className="row-delete" title="목록에서 삭제" aria-label={`${e.name} 삭제`} onClick={() => watch.remove(e.symbol)}>×</button>
-          </li>
+          <Fragment key={e.symbol}>
+            <li
+              className={dragFrom === i ? "dragging" : ""}
+              draggable
+              onDragStart={() => setDragFrom(i)}
+              onDragOver={(ev) => ev.preventDefault()}
+              onDrop={() => { if (dragFrom !== null) watch.move(dragFrom, i); setDragFrom(null); }}
+              onDragEnd={() => setDragFrom(null)}
+            >
+              <span className="handle" title="끌어서 순서 바꾸기">⋮⋮</span>
+              <label className="row-main">
+                <input type="checkbox" checked={e.shown} onChange={(ev) => toggle(e.symbol, ev.target.checked)} />
+                <span className="row-name">{e.name}</span>
+                <span className="row-symbol">{e.symbol}</span>
+              </label>
+              <button
+                type="button"
+                className={`row-alert ${e.target || e.stop ? "set" : ""}`}
+                title="목표가·손절가 알림"
+                aria-expanded={editing === e.symbol}
+                onClick={() => openAlerts(e.symbol, e.target, e.stop)}
+              >알림</button>
+              <button type="button" className="row-delete" title="목록에서 삭제" aria-label={`${e.name} 삭제`} onClick={() => watch.remove(e.symbol)}>×</button>
+            </li>
+            {editing === e.symbol && (
+              <li className="alert-edit">
+                <form onSubmit={(ev) => { ev.preventDefault(); saveAlerts(e.symbol); }}>
+                  <label>목표가<input inputMode="decimal" value={targetText} onChange={(ev) => setTargetText(ev.target.value)} placeholder={isKrx(e.symbol) ? "원" : "$"} /></label>
+                  <label>손절가<input inputMode="decimal" value={stopText} onChange={(ev) => setStopText(ev.target.value)} placeholder={isKrx(e.symbol) ? "원" : "$"} /></label>
+                  <button type="submit">저장</button>
+                </form>
+              </li>
+            )}
+          </Fragment>
         ))}
         {watch.entries.length === 0 && <li className="hits-empty">위에서 종목을 검색해 추가해 보세요</li>}
       </ul>

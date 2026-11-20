@@ -345,6 +345,26 @@ html, body, #root {
   border-radius: 50%;
 }
 .panel .row-delete:hover { color: var(--up); border-color: var(--up); }
+.panel .row-alert {
+  padding: 0 calc(5 * var(--u));
+  font-size: calc(11.5 * var(--u));
+  color: #888;
+  background: #fff;
+  border: 1.5px solid #ccc;
+  border-radius: calc(8 * var(--u));
+}
+.panel .row-alert.set { color: #fff; background: #f04452; border-color: #f04452; }
+.list .alert-edit { padding: 2px 0 4px calc(18 * var(--u)); }
+.alert-edit form { display: flex; align-items: center; gap: calc(4 * var(--u)); flex-wrap: wrap; }
+.alert-edit label { display: flex; align-items: center; gap: 3px; font-size: calc(12 * var(--u)); color: #666; }
+.panel .alert-edit input {
+  width: calc(64 * var(--u));
+  padding: 0 calc(4 * var(--u));
+  font: 400 calc(13 * var(--u)) "Gaegu", sans-serif;
+  border: 1.5px solid var(--ink);
+  border-radius: calc(6 * var(--u));
+}
+.panel .alert-edit button { padding: 0 calc(6 * var(--u)); font-size: calc(12.5 * var(--u)); }
 
 .empty {
   position: absolute;
@@ -418,6 +438,12 @@ html, body, #root {
 g.spark { animation: spark 0.16s steps(2) infinite alternate; transform-box: fill-box; transform-origin: center; }
 .puff  { animation: puff 2.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
 .puff.p2 { animation-delay: .8s; }
+/* 비상: siren beams flash in turn, megaphone waves pulse */
+.beam { animation: beam 0.5s steps(1) infinite; }
+.beam-r { animation-delay: -0.25s; }
+.waves { animation: waves 0.6s ease-out infinite; }
+@keyframes beam { 0% { opacity: 1; } 50% { opacity: 0; } }
+@keyframes waves { 0% { opacity: 0.2; } 40% { opacity: 1; } 100% { opacity: 0.2; } }
 .puff.p3 { animation-delay: 1.6s; }
 @keyframes hop {
   0%, 100% { transform: translateY(0) scale(1.06, 0.92); }
@@ -439,5 +465,5 @@ g.spark { animation: spark 0.16s steps(2) infinite alternate; transform-box: fil
 @keyframes spark { from { transform: scale(0.8) rotate(0); } to { transform: scale(1.25) rotate(20deg); } }
 @keyframes puff { 0% { opacity: 0; transform: translateY(6px) scale(.6); } 25% { opacity: .75; } 100% { opacity: 0; transform: translateY(-14px) scale(1.2); } }
 @media (prefers-reduced-motion: reduce) {
-  .hop, .bob, .idle, .sway, .melt, .shake, g.spark, .puff, .bubble { animation: none; }
+  .hop, .bob, .idle, .sway, .melt, .shake, g.spark, .puff, .bubble, .beam, .waves { animation: none; }
 }

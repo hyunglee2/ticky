@@ -9,7 +9,9 @@ interface Props {
   quote?: Quote;
   mood: MoodKey;
   line: string; // a fresh line picked when the mood changes
-  onRemove: () => void;
+  onRemove?: () => void;
+  /** fixed x position (preview lineup): the roaming engine leaves pinned Tickies alone */
+  pinX?: number;
 }
 
 // a live price older than this is the last trade before a quiet stretch (night, weekend)
@@ -79,7 +81,7 @@ function useChatter(moodLine: string, mood: MoodKey, infoLine: string | null, hu
   return hushed ? null : said;
 }
 
-export function Pet({ item, quote, mood, line, onRemove }: Props) {
+export function Pet({ item, quote, mood, line, onRemove, pinX }: Props) {
   const [hover, setHover] = useState(false);
   const pct = quote?.changePct ?? 0;
   // a stock added by its code shows the source's official name instead of the bare code
@@ -105,6 +107,8 @@ export function Pet({ item, quote, mood, line, onRemove }: Props) {
     <div
       className="pet"
       data-symbol={item.symbol}
+      data-pinned={pinX !== undefined ? "1" : undefined}
+      style={pinX !== undefined ? { transform: `translateX(${pinX}px)` } : undefined}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
@@ -130,7 +134,7 @@ export function Pet({ item, quote, mood, line, onRemove }: Props) {
         {said && <div key={said.id} className="bubble">{said.text}</div>}
       </div>
       <div className="art" dangerouslySetInnerHTML={{ __html: svg }} />
-      {hover && (
+      {hover && onRemove && (
         <button className="remove" type="button" onClick={onRemove} title="화면에서 내리기 (목록에는 남아요)" aria-label={`${name} 화면에서 내리기`}>×</button>
       )}
       </div>

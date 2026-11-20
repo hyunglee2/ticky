@@ -11,7 +11,7 @@ const lidVar = (tone: Tone) => `var(--${tone}-lid)`;
 
 type EyeKind = "up" | "look" | "lid" | "heavy" | "smug" | "daze" | "lidclosed" | "blank";
 type MouthKind = "open" | "smile" | "wobble" | "tiny" | "flat" | "smirk" | "drool" | "puff";
-type WickKind = "perky" | "calm" | "droop" | "frizz";
+type WickKind = "perky" | "calm" | "droop" | "frizz" | "none";
 type Anim = "hop" | "bob" | "idle" | "sway" | "melt" | "shake";
 
 interface Look {
@@ -35,6 +35,8 @@ const LOOKS: Record<MoodKey, Look> = {
   sleep: { h: 66,  eye: "lidclosed", mouth: "drool",  wick: "droop", anim: "idle" },
   shock: { h: 80,  eye: "up",        mouth: "open",   wick: "perky", anim: "bob" },
   offline: { h: 66, eye: "blank",    mouth: "flat",   wick: "droop", anim: "idle" },
+  // 비상: a siren on the head instead of the wick, and a megaphone
+  alarm: { h: 84,  eye: "up",        mouth: "open",   wick: "none",  anim: "shake" },
 };
 
 // the part of the eye oval above a horizontal cut, covering `amount` (0..1) of its height
@@ -91,6 +93,7 @@ function mouth(x: number, y: number, kind: MouthKind) {
 
 // wick = the candle's upper shadow, worn like a single hair
 function wick(x: number, top: number, kind: WickKind) {
+  if (kind === "none") return "";
   const d = {
     perky: `M${x} ${top + 2} q-3 -12 3 -20`,
     calm:  `M${x} ${top + 2} q-1 -8 2 -13`,
@@ -126,6 +129,24 @@ function extras(mood: MoodKey, top: number, h: number) {
     case "shock":
       return `<path d="M98 ${top + 2} v14" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>` +
         `<circle cx="98" cy="${top + 24}" r="2.4" fill="${INK}"/>`;
+    case "alarm": {
+      // siren: a red dome on a dark base, with two light beams that flash in turn
+      const sirenTop = top - 4;
+      const siren =
+        `<path class="beam beam-l" d="M52 ${sirenTop - 6} L34 ${sirenTop - 15} L34 ${sirenTop + 2} Z" fill="#ff5a64" fill-opacity=".45"/>` +
+        `<path class="beam beam-r" d="M68 ${sirenTop - 6} L86 ${sirenTop - 15} L86 ${sirenTop + 2} Z" fill="#ff5a64" fill-opacity=".45"/>` +
+        `<rect x="49" y="${sirenTop}" width="22" height="5" rx="2" fill="#4a4a4a"/>` +
+        `<path d="M51 ${sirenTop} a9 10 0 0 1 18 0 z" fill="#f04452"/>` +
+        `<ellipse cx="56.5" cy="${sirenTop - 5}" rx="2" ry="3" fill="#fff" fill-opacity=".7"/>`;
+      // megaphone held on the side it's facing, with sound waves
+      const my = top + 84 * 0.58;
+      const megaphone =
+        `<rect x="88" y="${my + 2}" width="4" height="8" rx="1.5" fill="${INK}"/>` +
+        `<path d="M86 ${my - 3} L104 ${my - 10} L104 ${my + 10} L86 ${my + 3} Z" fill="#fff" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>` +
+        `<path d="M100 ${my - 8.5} L104 ${my - 10} L104 ${my + 10} L100 ${my + 8.5} Z" fill="#f04452"/>` +
+        `<path class="waves" d="M108 ${my - 6} q4 6 0 12 M113 ${my - 10} q7 10 0 20" fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>`;
+      return siren + megaphone;
+    }
     case "offline":
       return `<path d="M92 ${top - 4} q0 -8 7 -8 q7 0 7 7 q0 5 -7 7 v4" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>` +
         `<circle cx="99" cy="${top + 14}" r="2" fill="${INK}"/>`;
@@ -185,8 +206,9 @@ export function headTop(mood: MoodKey): number {
   const look = LOOKS[mood];
   if (mood === "melt") return 86 - 6;
   const top = 122 - look.h;
-  const reach = { boom: 31, blast: 48, sleep: 30, offline: 14 } as Partial<Record<MoodKey, number>>;
-  const wickReach = look.wick === "perky" ? 22 : look.wick === "frizz" ? 20 : look.wick === "calm" ? 15 : 12;
+  const reach = { boom: 31, blast: 48, sleep: 30, offline: 14, alarm: 20 } as Partial<Record<MoodKey, number>>;
+  const wickReach = look.wick === "none" ? 0
+    : look.wick === "perky" ? 22 : look.wick === "frizz" ? 20 : look.wick === "calm" ? 15 : 12;
   return top - Math.max(wickReach, reach[mood] ?? 0);
 }
 

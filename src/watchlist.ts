@@ -10,6 +10,9 @@ export const MAX_SHOWN = 5;
 
 export interface WatchEntry extends WatchItem {
   shown: boolean;
+  /** 비상 when the price reaches these (in the stock's own currency) */
+  target?: number;
+  stop?: number;
 }
 
 export type StarterMarket = "kr" | "us" | "both";
@@ -86,6 +89,11 @@ export function useWatchlist() {
     return true;
   }, [list, shownCount]);
 
+  /** Set or clear (undefined) the target / stop prices for one stock. */
+  const setAlerts = useCallback((symbol: string, target?: number, stop?: number) => {
+    setEntries(list.map((e) => (e.symbol === symbol ? { ...e, target, stop } : e)));
+  }, [list]);
+
   const move = useCallback((from: number, to: number) => {
     if (from === to || from < 0 || to < 0 || from >= list.length || to >= list.length) return;
     const next = [...list];
@@ -103,6 +111,7 @@ export function useWatchlist() {
     add,
     remove,
     setShown,
+    setAlerts,
     move,
   };
 }

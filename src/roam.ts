@@ -9,6 +9,7 @@ import type { MoodKey } from "./ticky/moods";
 const SPEED: Record<MoodKey, number> = {
   boom: 75, cheer: 60, happy: 42, good: 32, calm: 22, sulky: 14, sad: 9,
   shock: 0, melt: 0, blast: 0, sleep: 0, offline: 0,
+  alarm: 95, // scurries around sounding the alarm
 };
 
 const EDGE = 16;          // keep clear of the screen edges (room for the hover card too)
@@ -41,7 +42,7 @@ export function useRoaming(moods: Record<string, MoodKey>) {
       const scale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--s")) || 1;
 
       const placed: { el: HTMLElement; w: Walker; width: number }[] = [];
-      for (const el of document.querySelectorAll<HTMLElement>(".pet[data-symbol]")) {
+      for (const el of document.querySelectorAll<HTMLElement>(".pet[data-symbol]:not([data-pinned])")) {
         const symbol = el.dataset.symbol!;
         const width = el.offsetWidth;
         const maxX = Math.max(EDGE, rightLimit - width);
