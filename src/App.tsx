@@ -5,8 +5,9 @@ import { Onboarding } from "./components/Onboarding";
 import { StatePreview } from "./components/StatePreview";
 import { createHybridFeed } from "./market/hybridFeed";
 import { isMarketOpen } from "./market/hours";
-import { formatPrice, isKrx, type FeedStatus, type Quote } from "./market/types";
-import { bandMood, pickLine, type MoodKey } from "./ticky/moods";
+import { isKrx, type FeedStatus, type Quote } from "./market/types";
+import { ALARM_LINES, bandMood, moodLines, pickFrom, pickLine, type AlarmReason, type MoodKey } from "./ticky/moods";
+import { detectTrend, TREND_LINES, type Trend } from "./ticky/trend";
 import { useDockHeight, useTextScale, useTickyScale } from "./scale";
 import { useRoaming } from "./roam";
 import { inTauri, useClickThroughRegions } from "./clickThrough";
@@ -23,7 +24,8 @@ const ALARM_PCT = 3, ALARM_MS = 8000, JUMP_ALARM_GAP = 5 * 60_000, REARM = 0.005
 
 /** how many history points cover ~5 minutes: live KRX every 7 s, live US every 15 s, fake every 1.5 s */
 const fiveMinTicks = (q: Quote) => (q.source === "live" ? (isKrx(q.symbol) ? 43 : 20) : 20);
-const signed = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(n).toFixed(2)}`;
+// a new chart-flow line (반등, 반납 …) speaks up at most this often; otherwise it joins the chatter
+const TREND_GAP = 2 * 60_000;
 
 // per-viewer conveniences; the app works the same if storage is unavailable
 function load<T>(key: string, fallback: T): T {
@@ -44,6 +46,9 @@ interface PetState {
   line: string;
   shockUntil: number;
   alarmUntil: number;
+  alarmReason?: AlarmReason;
+  trend: Trend | null; // chart flow over the last ~10 minutes, for situational lines
+  trendAt: number;     // when a chart-flow line last spoke up on its own
   jumpAlarmAt: number; // when the last 급변 alarm fired
   targetHit: boolean;  // already alarmed for the target / stop price (until it re-arms)
   stopHit: boolean;
@@ -51,11 +56,14 @@ interface PetState {
 
 const sameState = (a: PetState | undefined, b: PetState) =>
   !!a && a.band === b.band && a.mood === b.mood && a.line === b.line && a.shockUntil === b.shockUntil &&
-  a.alarmUntil === b.alarmUntil && a.targetHit === b.targetHit && a.stopHit === b.stopHit;
+  a.alarmUntil === b.alarmUntil && a.targetHit === b.targetHit && a.stopHit === b.stopHit &&
+  a.alarmReason === b.alarmReason && a.trend === b.trend && a.trendAt === b.trendAt;
 
 export default function App() {
   const watch = useWatchlist();
   const [followHours, setFollowHours] = useState<boolean>(() => load("ticky.followHours", false));
+  // US pre-market and after-hours: awake (default) or asleep like the overnight close
+  const [wakeExtended, setWakeExtended] = useState<boolean>(() => load("ticky.wakeExtended", true));
   const [quotes, setQuotes] = useState<Record<string, Quote>>({});
   const [pets, setPets] = useState<Record<string, PetState>>({});
   const petsRef = useRef(pets);
@@ -74,6 +82,7 @@ export default function App() {
   useClickThroughRegions();
 
   useEffect(() => save("ticky.followHours", followHours), [followHours]);
+  useEffect(() => save("ticky.wakeExtended", wakeExtended), [wakeExtended]);
   // preview mode: show every state side by side (not saved; off on each launch)
   const [preview, setPreview] = useState(false);
   // only the stocks shown on screen are polled; keyed by symbols so a re-render doesn't resubscribe
@@ -106,6 +115,7 @@ export default function App() {
         const line = old?.mood === "offline" ? old.line : pickLine("offline");
         next[symbol] = {
           band: old?.band ?? "calm", mood: "offline", line, shockUntil: 0, alarmUntil: 0,
+          trend: null, trendAt: old?.trendAt ?? 0,
           jumpAlarmAt: old?.jumpAlarmAt ?? 0, targetHit: old?.targetHit ?? false, stopHit: old?.stopHit ?? false,
         };
         if (!sameState(old, next[symbol])) changed = true;
@@ -113,7 +123,6 @@ export default function App() {
       }
       if (!q) continue;
       const entry = entries[symbol];
-      const name = entry && entry.name !== symbol ? entry.name : q.name ?? symbol;
       const band = bandMood(q.changePct, old?.band);
 
       // movement over the last ~5 minutes
@@ -127,45 +136,60 @@ export default function App() {
 
       // 비상 triggers
       let alarmUntil = old?.alarmUntil ?? 0;
-      let alarmText = "";
+      let fired: AlarmReason | undefined;
       let jumpAlarmAt = old?.jumpAlarmAt ?? 0;
-      const fire = (text: string) => { alarmUntil = now + ALARM_MS; alarmText = text; };
+      const fire = (reason: AlarmReason) => { alarmUntil = now + ALARM_MS; fired = reason; };
       if (Math.abs(move) >= ALARM_PCT && now - jumpAlarmAt >= JUMP_ALARM_GAP) {
         jumpAlarmAt = now;
-        fire(`비상! ${name} 5분 새 ${signed(move)}%`);
+        fire(move > 0 ? "jumpUp" : "jumpDown");
       }
-      if (old && old.band !== band && (band === "boom" || band === "blast")) {
-        fire(band === "boom" ? `비상! ${name} +10% 돌파` : `비상! ${name} −10% 붕괴`);
-      }
+      if (old && old.band !== band && (band === "boom" || band === "blast")) fire(band);
       let targetHit = old?.targetHit ?? false;
       if (!entry?.target) targetHit = false;
       else if (!targetHit && q.price >= entry.target) {
         targetHit = true;
-        fire(`비상! ${name} 목표가 ${formatPrice(symbol, entry.target)} 도달`);
+        fire("target");
       } else if (targetHit && q.price < entry.target * (1 - REARM)) targetHit = false;
       let stopHit = old?.stopHit ?? false;
       if (!entry?.stop) stopHit = false;
       else if (!stopHit && q.price <= entry.stop) {
         stopHit = true;
-        fire(`비상! ${name} 손절가 ${formatPrice(symbol, entry.stop)} 도달`);
+        fire("stop");
       } else if (stopHit && q.price > entry.stop * (1 + REARM)) stopHit = false;
 
       // live quotes know their session (pre-market and after-hours count as awake);
       // fake ones fall back to the exchange's regular hours
-      const closed = q.session ? q.session === "closed" : !isMarketOpen(symbol);
+      const closed = q.session
+        ? q.session === "closed" || (!wakeExtended && q.session !== "regular")
+        : !isMarketOpen(symbol);
       const mood: MoodKey =
         now < alarmUntil ? "alarm"
         : followHours && closed ? "sleep"
         : now < shockUntil ? "shock"
         : band;
-      // a fresh alarm says exactly what happened; otherwise a new line only when the mood changes
-      const line = alarmText || (old && old.mood === mood ? old.line : pickLine(mood));
-      next[symbol] = { band, mood, line, shockUntil, alarmUntil, jumpAlarmAt, targetHit, stopHit };
+      const alarmReason = fired ?? (mood === "alarm" ? old?.alarmReason : undefined);
+
+      // chart flow (only for the plain % moods): compares with earlier prices, not just today's %
+      const trend = mood === band ? detectTrend(h, q.prevClose, n * 2) : null;
+      let trendAt = old?.trendAt ?? 0;
+
+      // what to say first: a fresh alarm says why; a new mood picks a new line;
+      // a new chart flow speaks up (not too often); otherwise keep the current line
+      let line: string;
+      if (fired) line = ALARM_LINES[fired][0];
+      else if (!old || old.mood !== mood) line = pickLine(mood, old?.line);
+      else if (trend && trend !== old.trend && now - trendAt >= TREND_GAP) {
+        line = pickFrom(TREND_LINES[trend], old.line);
+        trendAt = now;
+      } else line = old.line;
+      next[symbol] = {
+        band, mood, line, shockUntil, alarmUntil, alarmReason, trend, trendAt, jumpAlarmAt, targetHit, stopHit,
+      };
       if (!sameState(old, next[symbol])) changed = true;
     }
     if (Object.keys(next).length !== Object.keys(petsRef.current).length) changed = true;
     if (changed) setPets(next);
-  }, [quotes, shown, followHours, status, liveEnabled, watch.entries, clock]);
+  }, [quotes, shown, followHours, wakeExtended, status, liveEnabled, watch.entries, clock]);
 
   // Tickies wander along the bottom of the screen at a pace set by their mood
   const moods = useMemo(
@@ -183,6 +207,8 @@ export default function App() {
             watch={watch}
             followHours={followHours}
             onFollowHours={setFollowHours}
+            wakeExtended={wakeExtended}
+            onWakeExtended={setWakeExtended}
             scale={scale}
             onScale={setScale}
             preview={preview}
@@ -200,6 +226,8 @@ export default function App() {
                   quote={quotes[item.symbol]}
                   mood={p.mood}
                   line={p.line}
+                  pool={p.mood === "alarm" && p.alarmReason ? [ALARM_LINES[p.alarmReason][1]] : moodLines(p.mood)}
+                  hint={p.trend ? TREND_LINES[p.trend] : undefined}
                   onRemove={() => watch.setShown(item.symbol, false)}
                 />
               ) : null;

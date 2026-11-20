@@ -273,6 +273,7 @@ html, body, #root {
   cursor: pointer;
 }
 .panel label { display: flex; gap: 6px; align-items: center; }
+.panel label.off { opacity: 0.45; }
 .sizes { display: flex; flex-wrap: nowrap; gap: 4px; align-items: center; margin-bottom: 6px; white-space: nowrap; }
 .sizes span { font-weight: 700; margin-right: 2px; }
 .panel .sizes button { color: var(--ink); background: #fff; border: 2px solid var(--ink); padding: 0 calc(6 * var(--u)); }

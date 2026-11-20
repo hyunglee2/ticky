@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { headTop, tickySvg } from "../ticky/art";
-import { moodName, moodTone, pickLine, type MoodKey } from "../ticky/moods";
+import { moodName, moodTone, pickFrom, type MoodKey } from "../ticky/moods";
 import { formatPrice, isKrx, type Quote, type Session, type WatchItem } from "../market/types";
 import { Sparkline } from "./Sparkline";
 
@@ -8,7 +8,9 @@ interface Props {
   item: WatchItem;
   quote?: Quote;
   mood: MoodKey;
-  line: string; // a fresh line picked when the mood changes
+  line: string;   // said right away whenever it changes (new mood, alarm reason, chart flow)
+  pool: string[]; // what it says after that, now and then
+  hint?: string[]; // situational lines (chart flow) that come up more often than the pool
   onRemove?: () => void;
   /** fixed x position (preview lineup): the roaming engine leaves pinned Tickies alone */
   pinX?: number;
@@ -42,16 +44,18 @@ const rand = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
 // speech bubbles pop up now and then instead of staying up
 const SAY_MS = [3200, 4800];   // how long a bubble stays
 const QUIET_MS = [5000, 15000]; // pause between bubbles
-const INFO_CHANCE = 0.2;       // how often the bubble reads out the stock's name and % instead of a mood line
+const ALARM_QUIET_MS = [400, 800]; // 비상 is short: its follow-up line comes right after
+const HINT_CHANCE = 0.4;        // situational lines beat mood lines
 
 /**
  * Decide when this Ticky talks: right away when its mood changes, otherwise every few seconds
  * at random (staggered so the Tickies don't all talk at once). Hovering hushes it (the card shows).
  */
-function useChatter(moodLine: string, mood: MoodKey, infoLine: string | null, hushed: boolean) {
+function useChatter(moodLine: string, pool: string[], hint: string[] | undefined, quick: boolean, hushed: boolean) {
   const [said, setSaid] = useState<{ text: string; id: number } | null>(null);
-  const latest = useRef({ mood, infoLine });
-  latest.current = { mood, infoLine };
+  const latest = useRef({ pool, hint, quick });
+  latest.current = { pool, hint, quick };
+  const last = useRef("");
   const seq = useRef(0);
   const mounted = useRef(false);
 
@@ -60,15 +64,17 @@ function useChatter(moodLine: string, mood: MoodKey, infoLine: string | null, hu
     let timer = 0;
     let cancelled = false;
     const nextLine = () => {
-      const { mood: m, infoLine: info } = latest.current;
-      return info && Math.random() < INFO_CHANCE ? info : pickLine(m);
+      const { pool: p, hint: h } = latest.current;
+      return h?.length && Math.random() < HINT_CHANCE ? pickFrom(h, last.current) : pickFrom(p, last.current);
     };
     const say = (text: string) => {
       if (cancelled) return;
+      last.current = text;
       setSaid({ text, id: ++seq.current });
       timer = window.setTimeout(() => {
         setSaid(null);
-        timer = window.setTimeout(() => say(nextLine()), rand(QUIET_MS[0], QUIET_MS[1]));
+        const [lo, hi] = latest.current.quick ? ALARM_QUIET_MS : QUIET_MS;
+        timer = window.setTimeout(() => say(nextLine()), rand(lo, hi));
       }, rand(SAY_MS[0], SAY_MS[1]));
     };
     // first appearance: a staggered start so the Tickies don't all talk at once
@@ -81,7 +87,7 @@ function useChatter(moodLine: string, mood: MoodKey, infoLine: string | null, hu
   return hushed ? null : said;
 }
 
-export function Pet({ item, quote, mood, line, onRemove, pinX }: Props) {
+export function Pet({ item, quote, mood, line, pool, hint, onRemove, pinX }: Props) {
   const [hover, setHover] = useState(false);
   const pct = quote?.changePct ?? 0;
   // a stock added by its code shows the source's official name instead of the bare code
@@ -89,8 +95,7 @@ export function Pet({ item, quote, mood, line, onRemove, pinX }: Props) {
   const tone = moodTone(mood, pct);
   // markup only changes with the mood, so animations aren't restarted on every price tick
   const svg = useMemo(() => tickySvg(mood, tone, `${name} ${moodName(mood)}`), [mood, tone, name]);
-  const infoLine = quote && mood !== "offline" ? `${name} ${signed(pct)}%` : null;
-  const said = useChatter(line, mood, infoLine, hover);
+  const said = useChatter(line, pool, hint, mood === "alarm", hover);
 
   const tag = (
     <div className="tag">

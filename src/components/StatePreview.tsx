@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { Quote } from "../market/types";
-import { moodName, pickLine, type MoodKey } from "../ticky/moods";
+import { ALARM_LINES, moodLines, moodName, pickLine, type MoodKey } from "../ticky/moods";
 import { Pet } from "./Pet";
 
 /** Every state, with a representative day change so the colour and tag look right. */
@@ -38,7 +38,11 @@ export function StatePreview() {
   const toolbarRoom = 60;
   const width = Math.max(600, window.innerWidth - toolbarRoom);
   const step = width / STATES.length;
-  const lines = useMemo(() => Object.fromEntries(STATES.map((s) => [s.mood, pickLine(s.mood)])), []);
+  // 비상 shows one example reason (5분 만에 떡락); the others say a random line of their mood
+  const lines = useMemo(
+    () => Object.fromEntries(STATES.map((s) => [s.mood, s.mood === "alarm" ? ALARM_LINES.jumpDown[0] : pickLine(s.mood)])),
+    [],
+  );
 
   return (
     <>
@@ -51,6 +55,7 @@ export function StatePreview() {
             quote={quoteFor(symbol, s.pct)}
             mood={s.mood}
             line={lines[s.mood]}
+            pool={s.mood === "alarm" ? [ALARM_LINES.jumpDown[1]] : moodLines(s.mood)}
             pinX={Math.round(i * step)}
           />
         );

@@ -47,25 +47,46 @@ export function moodTone(mood: MoodKey, pct: number): Tone {
   return BANDS.find((b) => b.mood === mood)?.tone ?? "flat";
 }
 
-// deadpan one-liners, one picked each time the mood changes
+// 대사 콘셉트: 주식하는 사람의 속마음을 대신 말하는 무심한 캔들. 반말, 투자 권유처럼 들리는 말은 쓰지 않는다.
 const LINES: Record<MoodKey, string[]> = {
-  boom:  ["간다간다간다", "상한가 가즈아"],
-  cheer: ["익절각?", "오늘 내가 주인공"],
-  happy: ["오늘 좀 되는데", "후후"],
-  good:  ["나쁘지 않네", "슬슬 오르나"],
-  calm:  ["...", "잔잔하다"],
-  sulky: ["존버 중", "괜찮아 괜찮아"],
-  sad:   ["물타기 할까", "왜 나만"],
-  melt:  ["계좌가 녹는다", "흐어엉"],
-  blast: ["펑.", "..."],
-  sleep: ["장 끝. 퇴근.", "내일 보자"],
-  shock: ["어?!", "뭐야 뭐야"],
-  offline: ["연결이 끊겼어", "어디 갔지?"],
-  // the first alarm line is always the specific reason (App.tsx); these follow while it lasts
-  alarm: ["비상! 비상!", "삐뽀삐뽀", "다들 봐봐!"],
+  boom:  ["간다간다간다", "이게 맞아?", "미쳐따", "어디까지 가", "오늘 무슨 날임?"],
+  cheer: ["오늘 내가 주인공", "오늘 한 번 보여주나?", "심상치 않은데", "폼 미쳤다", "드디어 가는구나", "이걸 가네"],
+  happy: ["오늘 좀 되는데", "후후", "슬슬 시동 거나?", "느좋", "가즈아", "야르릉"],
+  good:  ["나쁘지 않네", "오늘 좀 가나?", "오?", "굿"],
+  calm:  ["...", "흠", "오늘도 제자리", "움직여 봐", "숨은 쉬니?", "노잼"],
+  sulky: ["하...", "ㄱㅊㄱㅊ", "왜 이래", "오늘은 아닌가", "또 시작이네", "엥..."],
+  sad:   ["왜 나만", "살려줘", "이게 맞아?", "적당히 좀", "에휴"],
+  melt:  ["흐어엉", "제발 그만", "바닥이 어디야", "하 진짜", "1주석...", "이건 좀"],
+  blast: ["펑.", "ㅋㅋㅋㅋㅋ", "나 먼저 간다", "이게 주식이야?", "환불해줘;;"],
+  shock: ["엥", "뭐야 뭐야", "잠깐만", "갑자기?"],
+  sleep: ["장 끝. 퇴근.", "내일 보자", "zzz"],
+  offline: ["연결 끊김", "뭐지?", "시세 안 뜸", "응답 없음"],
+  // only when the reason is unknown; normally ALARM_LINES says what happened
+  alarm: ["비상! 비상!", "삐뽀삐뽀!"],
 };
 
-export function pickLine(mood: MoodKey): string {
-  const list = LINES[mood];
-  return list[Math.floor(Math.random() * list.length)];
+export function moodLines(mood: MoodKey): string[] {
+  return LINES[mood];
 }
+
+/** A random line from the list, never the one just said (when there's a choice). */
+export function pickFrom(list: string[], avoid?: string): string {
+  const pool = list.length > 1 && avoid ? list.filter((l) => l !== avoid) : list;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+export function pickLine(mood: MoodKey, avoid?: string): string {
+  return pickFrom(LINES[mood], avoid);
+}
+
+/** What set off 비상. Each reason has its own first line and a follow-up. */
+export type AlarmReason = "target" | "stop" | "jumpUp" | "jumpDown" | "boom" | "blast";
+
+export const ALARM_LINES: Record<AlarmReason, [string, string]> = {
+  target:   ["목표가 찍었다!", "드디어!!"],
+  stop:     ["손절가 도달!", "비상! 비상!"],
+  jumpUp:   ["5분 만에 +3%", "뭐야 갑자기 ㅋㅋ"],
+  jumpDown: ["5분 만에 -3%", "잠깐만..."],
+  boom:     ["10% 돌파!", "간다간다간다"],
+  blast:    ["-10% 진입!", "이건 좀 심한데"],
+};

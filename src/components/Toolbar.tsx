@@ -9,6 +9,8 @@ interface Props {
   watch: Watchlist;
   followHours: boolean;
   onFollowHours: (on: boolean) => void;
+  wakeExtended: boolean;
+  onWakeExtended: (on: boolean) => void;
   scale: number;
   onScale: (scale: number) => void;
   preview: boolean;
@@ -24,7 +26,7 @@ const LIVE_TEXT: Record<LiveStatus, string> = {
   error: "연결할 수 없어요",
 };
 
-export function Toolbar({ watch, followHours, onFollowHours, scale, onScale, preview, onPreview, status }: Props) {
+export function Toolbar({ watch, followHours, onFollowHours, wakeExtended, onWakeExtended, scale, onScale, preview, onPreview, status }: Props) {
   const [panel, setPanel] = useState<"none" | "list" | "settings">("none");
 
   return (
@@ -62,6 +64,15 @@ export function Toolbar({ watch, followHours, onFollowHours, scale, onScale, pre
           <label>
             <input type="checkbox" checked={followHours} onChange={(e) => onFollowHours(e.target.checked)} />
             실제 장 시간 따르기 (장 마감이면 잠)
+          </label>
+          <label className={followHours ? undefined : "off"}>
+            <input
+              type="checkbox"
+              checked={wakeExtended}
+              disabled={!followHours}
+              onChange={(e) => onWakeExtended(e.target.checked)}
+            />
+            미국 장전·장후에도 깨어 있기
           </label>
           <label>
             <input type="checkbox" checked={preview} onChange={(e) => onPreview(e.target.checked)} />
