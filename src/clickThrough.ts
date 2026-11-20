@@ -5,7 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 export const inTauri = () => "__TAURI_INTERNALS__" in window;
 
-const SELECTOR = ".pet, .card, .toolbar, .panel";
+const SELECTOR = ".pet, .card, .toolbar, .panel, .onboard";
 const PAD = 4; // a little slack around each part so the edge isn't fiddly
 
 export function useClickThroughRegions() {

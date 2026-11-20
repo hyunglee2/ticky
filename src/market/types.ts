@@ -31,8 +31,8 @@ export interface QuoteProvider {
   subscribe(items: WatchItem[], onQuote: (q: Quote) => void, onStatus?: (s: FeedStatus) => void): () => void;
 }
 
-/** Korean listings use 6-digit codes and trade in KRW. */
-export const isKrx = (symbol: string) => /^\d{6}$/.test(symbol);
+/** Korean listings use 6-character codes starting with a digit (005930, newer ones like 0193T0) and trade in KRW. */
+export const isKrx = (symbol: string) => /^\d[0-9A-Z]{5}$/.test(symbol);
 
 export function formatPrice(symbol: string, price: number) {
   return isKrx(symbol)

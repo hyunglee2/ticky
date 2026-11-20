@@ -1,11 +1,12 @@
 import { useState } from "react";
-import type { FeedStatus, LiveStatus, WatchItem } from "../market/types";
+import type { FeedStatus, LiveStatus } from "../market/types";
 import { SCALES } from "../scale";
 import { inTauri } from "../clickThrough";
+import type { Watchlist } from "../watchlist";
+import { WatchlistPanel } from "./WatchlistPanel";
 
 interface Props {
-  canAdd: boolean;
-  onAdd: (item: WatchItem) => void;
+  watch: Watchlist;
   followHours: boolean;
   onFollowHours: (on: boolean) => void;
   scale: number;
@@ -21,43 +22,28 @@ const LIVE_TEXT: Record<LiveStatus, string> = {
   error: "연결할 수 없어요",
 };
 
-export function Toolbar({ canAdd, onAdd, followHours, onFollowHours, scale, onScale, status }: Props) {
-  const [panel, setPanel] = useState<"none" | "add" | "settings">("none");
-  const [text, setText] = useState("");
-
-  const submit = () => {
-    const name = text.trim();
-    if (!name) return;
-    // a 6-digit code is a KRX listing; anything else is used as a ticker / name as typed
-    onAdd({ symbol: /^\d{6}$/.test(name) ? name : name.toUpperCase(), name });
-    setText("");
-    setPanel("none");
-  };
+export function Toolbar({ watch, followHours, onFollowHours, scale, onScale, status }: Props) {
+  const [panel, setPanel] = useState<"none" | "list" | "settings">("none");
 
   return (
     <div className="toolbar">
       <div className="grip" data-tauri-drag-region title="끌어서 옮기기">⋮⋮</div>
       <button
         type="button"
-        className="tool"
-        disabled={!canAdd}
-        title={canAdd ? "종목 추가" : "최대 5개까지 볼 수 있어요"}
-        onClick={() => setPanel(panel === "add" ? "none" : "add")}
+        className={`tool ${panel === "list" ? "on" : ""}`}
+        title="관심 종목"
+        aria-pressed={panel === "list"}
+        onClick={() => setPanel(panel === "list" ? "none" : "list")}
       >＋</button>
-      <button type="button" className="tool" title="설정" onClick={() => setPanel(panel === "settings" ? "none" : "settings")}>⚙</button>
+      <button
+        type="button"
+        className={`tool ${panel === "settings" ? "on" : ""}`}
+        title="설정"
+        aria-pressed={panel === "settings"}
+        onClick={() => setPanel(panel === "settings" ? "none" : "settings")}
+      >⚙</button>
 
-      {panel === "add" && (
-        <form className="panel" onSubmit={(e) => { e.preventDefault(); submit(); }}>
-          <input
-            autoFocus
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="종목 이름 또는 코드"
-            maxLength={16}
-          />
-          <button type="submit">추가</button>
-        </form>
-      )}
+      {panel === "list" && <WatchlistPanel watch={watch} />}
       {panel === "settings" && (
         <div className="panel">
           <div className="sizes" role="group" aria-label="크기">

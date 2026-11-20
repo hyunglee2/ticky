@@ -15,7 +15,7 @@
         "label": "main",
         "title": "ticky",
         "width": 600,
-        "height": 270,
+        "height": 300,
         "resizable": false,
         "transparent": true,
         "decorations": false,

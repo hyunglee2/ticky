@@ -1,4 +1,5 @@
 mod naver;
+mod search;
 mod yahoo;
 
 use std::{sync::Mutex, thread, time::Duration};
@@ -70,6 +71,22 @@ fn start_click_through(app: AppHandle) {
     });
 }
 
+/// Windows' "Text size" accessibility setting as a factor (1.0 = 100% … 2.25 = 225%).
+/// WebView2 doesn't apply it to page text, so the UI reads it and scales its text itself.
+#[tauri::command]
+fn text_scale() -> f64 {
+    #[cfg(windows)]
+    {
+        use winreg::{enums::HKEY_CURRENT_USER, RegKey};
+        if let Ok(key) = RegKey::predef(HKEY_CURRENT_USER).open_subkey("Software\\Microsoft\\Accessibility") {
+            if let Ok(percent) = key.get_value::<u32, _>("TextScaleFactor") {
+                return (percent as f64 / 100.0).clamp(1.0, 2.25);
+            }
+        }
+    }
+    1.0 // not set = Windows default 100%
+}
+
 /// Show the window if hidden, hide it if shown.
 fn toggle_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
@@ -102,8 +119,10 @@ pub fn run() {
         .manage(HitRegions::default())
         .invoke_handler(tauri::generate_handler![
             set_hit_regions,
+            text_scale,
             yahoo::fetch_yahoo_quotes,
-            naver::fetch_naver_quotes
+            naver::fetch_naver_quotes,
+            search::search_stocks
         ])
         .setup(|app| {
             let toggle = MenuItem::with_id(app, "toggle", "보이기 / 숨기기", true, None::<&str>)?;

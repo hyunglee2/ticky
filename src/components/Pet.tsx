@@ -21,18 +21,17 @@ const SESSION_NAME: Record<Session, string> = {
 // short badge next to the % on the name tag, only outside regular hours
 const SESSION_BADGE: Partial<Record<Session, string>> = { pre: "장전", post: "장후" };
 
-function sourceText(q: Quote) {
-  if (q.source === "fake") return "가짜 시세";
+/** Two short lines: where the price is from, and how fresh it is. */
+function sourceText(q: Quote): [string, string] {
+  if (q.source === "fake") return ["가짜 시세", ""];
   const krx = isKrx(q.symbol);
-  const from = krx ? "네이버" : "Yahoo";
-  const session = q.session ? SESSION_NAME[q.session] : "";
+  const head = `${krx ? "네이버" : "Yahoo"} · ${q.session ? SESSION_NAME[q.session] : ""}`;
   if (q.quotedAt && Date.now() - q.quotedAt > STALE_MS) {
-    const at = new Date(q.quotedAt).toLocaleString("ko-KR", {
-      month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit",
-    });
-    return `${from} · ${session} · ${at} 마지막 가격`;
+    const d = new Date(q.quotedAt);
+    const hm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    return [head, `${d.getMonth() + 1}/${d.getDate()} ${hm} 기준`];
   }
-  return `${from} · ${session} · ${krx ? "7초" : "15초"}마다`;
+  return [head, `${krx ? "7초" : "15초"}마다 갱신`];
 }
 
 const signed = (n: number, digits = 2) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(n).toFixed(digits)}`;
@@ -59,7 +58,9 @@ export function Pet({ item, quote, mood, line, onRemove }: Props) {
             {signed(quote.price - quote.prevClose, quote.prevClose > 1000 ? 0 : 2)} ({signed(pct)}%)
           </div>
           <Sparkline values={quote.history} base={quote.prevClose} tone={tone} />
-          <div className="card-source">{sourceText(quote)}</div>
+          {sourceText(quote).filter(Boolean).map((line) => (
+            <div key={line} className="card-source">{line}</div>
+          ))}
         </div>
       )}
       <div className="bubble">{line}</div>
@@ -71,7 +72,7 @@ export function Pet({ item, quote, mood, line, onRemove }: Props) {
         )}
       </div>
       {hover && (
-        <button className="remove" type="button" onClick={onRemove} aria-label={`${name} 빼기`}>×</button>
+        <button className="remove" type="button" onClick={onRemove} title="화면에서 내리기 (목록에는 남아요)" aria-label={`${name} 화면에서 내리기`}>×</button>
       )}
     </div>
   );

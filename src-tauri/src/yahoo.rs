@@ -119,7 +119,8 @@ pub async fn fetch_yahoo_quotes(symbols: Vec<String>) -> Result<QuoteBatch, Stri
     let mut batch = QuoteBatch { quotes: Vec::new(), missing: Vec::new() };
     for symbol in symbols {
         let res = client
-            .get(format!("{CHART_URL}/{symbol}"))
+            // class shares are BRK.B elsewhere but BRK-B on Yahoo
+            .get(format!("{CHART_URL}/{}", symbol.replace('.', "-")))
             .query(&[("interval", "1m"), ("range", "1d"), ("includePrePost", "true")])
             .send()
             .await

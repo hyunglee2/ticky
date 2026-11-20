@@ -1,22 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pet } from "./components/Pet";
 import { Toolbar } from "./components/Toolbar";
+import { Onboarding } from "./components/Onboarding";
 import { createHybridFeed } from "./market/hybridFeed";
 import { isMarketOpen } from "./market/hours";
-import { isKrx, type FeedStatus, type Quote, type WatchItem } from "./market/types";
+import { isKrx, type FeedStatus, type Quote } from "./market/types";
 import { bandMood, pickLine, type MoodKey } from "./ticky/moods";
-import { applyScale } from "./scale";
+import { useAutoWindowSize, useTextScale, useTickyScale } from "./scale";
 import { inTauri, useClickThroughRegions } from "./clickThrough";
+import { useWatchlist } from "./watchlist";
 import "./App.css";
-
-const MAX_ITEMS = 5;
-const DEFAULT_WATCHLIST: WatchItem[] = [
-  { symbol: "005930", name: "삼성전자" },
-  { symbol: "AAPL", name: "애플" },
-  { symbol: "035420", name: "NAVER" },
-  { symbol: "TSLA", name: "테슬라" },
-  { symbol: "NVDA", name: "엔비디아" },
-];
 
 // 놀람: a jump of 2% or more within the last 20 ticks (~30 s fake, ~5 min live), shown for 3 s
 const SHOCK_WINDOW = 20, SHOCK_PCT = 2, SHOCK_MS = 3000;
@@ -37,37 +30,40 @@ function save(key: string, value: unknown) {
 interface PetState { band: MoodKey; mood: MoodKey; line: string; shockUntil: number }
 
 export default function App() {
-  const [items, setItems] = useState<WatchItem[]>(() => load("ticky.watchlist", DEFAULT_WATCHLIST));
+  const watch = useWatchlist();
   const [followHours, setFollowHours] = useState<boolean>(() => load("ticky.followHours", false));
   const [quotes, setQuotes] = useState<Record<string, Quote>>({});
   const [pets, setPets] = useState<Record<string, PetState>>({});
   const petsRef = useRef(pets);
   petsRef.current = pets;
-  // live US quotes need the Rust side, so only in the desktop app (not the browser preview)
+  // live quotes need the Rust side, so only in the desktop app (not the browser preview)
   const liveEnabled = useMemo(() => inTauri(), []);
   const [status, setStatus] = useState<FeedStatus>({ us: "off", kr: "off", missing: [] });
   const feed = useMemo(() => createHybridFeed(liveEnabled), [liveEnabled]);
+
+  // size setting scales only Tickies + bubbles; text follows Windows' text size
+  const [scale, setScale] = useState<number>(() => load("ticky.scale", 1));
+  useEffect(() => save("ticky.scale", scale), [scale]);
+  useTickyScale(scale);
+  useTextScale();
+  useAutoWindowSize();
   useClickThroughRegions();
 
-  useEffect(() => save("ticky.watchlist", items), [items]);
   useEffect(() => save("ticky.followHours", followHours), [followHours]);
 
-  const [scale, setScale] = useState<number>(() => load("ticky.scale", 1));
+  // only the stocks shown on screen are polled; keyed by symbols so a re-render doesn't resubscribe
+  const shownKey = watch.shown.map((e) => e.symbol).join(",");
+  const shown = useMemo(() => watch.shown, [shownKey]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    save("ticky.scale", scale);
-    applyScale(scale).catch(() => { /* window API unavailable: CSS scale still applies */ });
-  }, [scale]);
-
-  useEffect(() => {
-    return feed.subscribe(items, (q) => setQuotes((prev) => ({ ...prev, [q.symbol]: q })), setStatus);
-  }, [feed, items]);
+    return feed.subscribe(shown, (q) => setQuotes((prev) => ({ ...prev, [q.symbol]: q })), setStatus);
+  }, [feed, shown]);
 
   // derive each Ticky's mood from its quote; pick a new line only when the mood changes
   useEffect(() => {
     const now = Date.now();
     const next: Record<string, PetState> = {};
     let changed = false;
-    for (const { symbol } of items) {
+    for (const { symbol } of shown) {
       const q = quotes[symbol];
       const old = petsRef.current[symbol];
       // 연결 끊김: the live source doesn't know this symbol, or that market's connection is failing
@@ -96,42 +92,41 @@ export default function App() {
     }
     if (Object.keys(next).length !== Object.keys(petsRef.current).length) changed = true;
     if (changed) setPets(next);
-  }, [quotes, items, followHours, status, liveEnabled]);
-
-  const add = (item: WatchItem) => {
-    setItems((list) =>
-      list.length >= MAX_ITEMS || list.some((i) => i.symbol === item.symbol) ? list : [...list, item],
-    );
-  };
-  const remove = (symbol: string) => setItems((list) => list.filter((i) => i.symbol !== symbol));
+  }, [quotes, shown, followHours, status, liveEnabled]);
 
   return (
     <main className="desk" data-tauri-drag-region>
-      <Toolbar
-        canAdd={items.length < MAX_ITEMS}
-        onAdd={add}
-        followHours={followHours}
-        onFollowHours={setFollowHours}
-        scale={scale}
-        onScale={setScale}
-        status={status}
-      />
-      <div className="pets" data-tauri-drag-region>
-        {items.map((item) => {
-          const p = pets[item.symbol];
-          return p ? (
-            <Pet
-              key={item.symbol}
-              item={item}
-              quote={quotes[item.symbol]}
-              mood={p.mood}
-              line={p.line}
-              onRemove={() => remove(item.symbol)}
-            />
-          ) : null;
-        })}
-        {items.length === 0 && <p className="empty">＋ 를 눌러 종목을 추가해 보세요</p>}
-      </div>
+      {!watch.ready && <Onboarding onPick={watch.start} />}
+      {watch.ready && (
+        <>
+          <Toolbar
+            watch={watch}
+            followHours={followHours}
+            onFollowHours={setFollowHours}
+            scale={scale}
+            onScale={setScale}
+            status={status}
+          />
+          <div className="pets" data-tauri-drag-region>
+            {shown.map((item) => {
+              const p = pets[item.symbol];
+              return p ? (
+                <Pet
+                  key={item.symbol}
+                  item={item}
+                  quote={quotes[item.symbol]}
+                  mood={p.mood}
+                  line={p.line}
+                  onRemove={() => watch.setShown(item.symbol, false)}
+                />
+              ) : null;
+            })}
+            {shown.length === 0 && (
+              <p className="empty">＋ 를 눌러 목록에서 띄울 종목을 골라 보세요</p>
+            )}
+          </div>
+        </>
+      )}
     </main>
   );
 }
