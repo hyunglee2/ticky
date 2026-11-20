@@ -198,7 +198,16 @@ form.panel { display: flex; gap: 6px; }
 .sizes span { font-weight: 700; margin-right: 2px; }
 .panel .sizes button { color: var(--ink); background: #fff; border: 2px solid var(--ink); padding: 0 6px; }
 .panel .sizes button.on { color: #fff; background: var(--ink); }
-.hint { margin: 6px 0 0; font-size: 15px; color: #777; }
+.hint { margin: 6px 0 0; font-size: 13px; color: #777; line-height: 1.2; }
+.hint.error { color: var(--up); }
+.card-source { margin-top: 1px; font-size: 11px; color: #888; }
+.keybox { margin-top: 8px; padding-top: 6px; border-top: 1.5px dashed #ccc; }
+.keybox-title { display: flex; justify-content: space-between; gap: 6px; font-weight: 700; margin-bottom: 4px; }
+.live { font-weight: 400; font-size: 12px; }
+.live-ok { color: #1a9b5a; }
+.live-connecting { color: #777; }
+.live-rate-limit, .live-error { color: var(--up); }
+.session { margin-left: 3px; padding: 0 4px; font-size: 10.5px; color: #fff; background: #8a8378; border-radius: 6px; vertical-align: 1px; }
 .empty { margin: 0 0 60px; font-size: 19px; font-weight: 700; background: rgba(255,255,255,.82); padding: 4px 10px; border-radius: 10px; }
 
 /* motion (from design/character-lab.html) */

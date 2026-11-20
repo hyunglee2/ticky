@@ -58,6 +58,7 @@ function toQuote(symbol: string, s: SimState): Quote {
     changePct: (price / s.prevClose - 1) * 100,
     history: [...s.history],
     updatedAt: Date.now(),
+    source: "fake",
   };
 }
 

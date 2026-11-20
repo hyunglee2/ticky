@@ -1,6 +1,7 @@
 import { useState } from "react";
-import type { WatchItem } from "../market/types";
+import type { LiveStatus, WatchItem } from "../market/types";
 import { SCALES } from "../scale";
+import { inTauri } from "../clickThrough";
 
 interface Props {
   canAdd: boolean;
@@ -9,9 +10,18 @@ interface Props {
   onFollowHours: (on: boolean) => void;
   scale: number;
   onScale: (scale: number) => void;
+  liveStatus: LiveStatus;
 }
 
-export function Toolbar({ canAdd, onAdd, followHours, onFollowHours, scale, onScale }: Props) {
+const LIVE_TEXT: Record<LiveStatus, string> = {
+  off: "",
+  connecting: "연결 중…",
+  ok: "연결됨",
+  "rate-limit": "요청이 너무 많아요. 잠시 후 다시 시도해요",
+  error: "연결할 수 없어요",
+};
+
+export function Toolbar({ canAdd, onAdd, followHours, onFollowHours, scale, onScale, liveStatus }: Props) {
   const [panel, setPanel] = useState<"none" | "add" | "settings">("none");
   const [text, setText] = useState("");
 
@@ -66,7 +76,18 @@ export function Toolbar({ canAdd, onAdd, followHours, onFollowHours, scale, onSc
             <input type="checkbox" checked={followHours} onChange={(e) => onFollowHours(e.target.checked)} />
             실제 장 시간 따르기 (장 마감이면 잠)
           </label>
-          <p className="hint">지금은 가짜 시세로 움직여요.</p>
+
+          <div className="keybox">
+            <div className="keybox-title">
+              미국 주식 · Yahoo
+              <span className={`live live-${liveStatus}`}>{LIVE_TEXT[liveStatus]}</span>
+            </div>
+            <p className="hint">
+              {inTauri()
+                ? "장 전·장 후 가격까지 15초마다 받아요. 한국 종목은 아직 가짜 시세예요."
+                : "실제 시세는 데스크탑 앱에서만 받아요."}
+            </p>
+          </div>
         </div>
       )}
     </div>

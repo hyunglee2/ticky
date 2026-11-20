@@ -9,7 +9,7 @@ const TEAR = "#8cc4ff";
 const toneVar = (tone: Tone) => `var(--${tone})`;
 const lidVar = (tone: Tone) => `var(--${tone}-lid)`;
 
-type EyeKind = "up" | "look" | "lid" | "heavy" | "smug" | "daze" | "lidclosed";
+type EyeKind = "up" | "look" | "lid" | "heavy" | "smug" | "daze" | "lidclosed" | "blank";
 type MouthKind = "open" | "smile" | "wobble" | "tiny" | "flat" | "smirk" | "drool" | "puff";
 type WickKind = "perky" | "calm" | "droop" | "frizz";
 type Anim = "hop" | "bob" | "idle" | "sway" | "melt" | "shake";
@@ -34,6 +34,7 @@ const LOOKS: Record<MoodKey, Look> = {
   blast: { h: 70,  eye: "daze",      mouth: "puff",   wick: "frizz", anim: "idle" },
   sleep: { h: 66,  eye: "lidclosed", mouth: "drool",  wick: "droop", anim: "idle" },
   shock: { h: 80,  eye: "up",        mouth: "open",   wick: "perky", anim: "bob" },
+  offline: { h: 66, eye: "blank",    mouth: "flat",   wick: "droop", anim: "idle" },
 };
 
 // the part of the eye oval above a horizontal cut, covering `amount` (0..1) of its height
@@ -48,7 +49,7 @@ function lidShape(x: number, y: number, rx: number, ry: number, amount: number, 
 
 // eye shape from eyes.svg: tall white oval (2:3) with a tall oval pupil set to the right
 const RX = 7.5, RY = 11.25, PRX = 3.6, PRY = 5.55, PX = 3.9;
-const LID: Partial<Record<EyeKind, number>> = { lid: 1 / 3, heavy: 1 / 2 };
+const LID: Partial<Record<EyeKind, number>> = { lid: 1 / 3, heavy: 1 / 2, blank: 1 / 2 };
 
 function eye(x: number, y: number, kind: EyeKind, tone: Tone) {
   if (kind === "lidclosed") {
@@ -65,8 +66,9 @@ function eye(x: number, y: number, kind: EyeKind, tone: Tone) {
       lidShape(x, y, RX, RY, 0.55, lidVar(tone));
   }
   const py = kind === "up" ? -3.7 : kind === "heavy" ? 1.1 : -0.5;
+  const px = kind === "blank" ? 0 : PX; // blank stare looks straight ahead
   const s = `<ellipse cx="${x}" cy="${y}" rx="${RX}" ry="${RY}" fill="#fff"/>` +
-    `<ellipse cx="${x + PX}" cy="${y + py}" rx="${PRX}" ry="${PRY}" fill="${INK}"/>`;
+    `<ellipse cx="${x + px}" cy="${y + py}" rx="${PRX}" ry="${PRY}" fill="${INK}"/>`;
   const amount = LID[kind];
   return amount ? s + lidShape(x, y, RX, RY, amount, lidVar(tone)) : s;
 }
@@ -124,6 +126,9 @@ function extras(mood: MoodKey, top: number, h: number) {
     case "shock":
       return `<path d="M98 ${top + 2} v14" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>` +
         `<circle cx="98" cy="${top + 24}" r="2.4" fill="${INK}"/>`;
+    case "offline":
+      return `<path d="M92 ${top - 4} q0 -8 7 -8 q7 0 7 7 q0 5 -7 7 v4" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>` +
+        `<circle cx="99" cy="${top + 14}" r="2" fill="${INK}"/>`;
     case "sleep":
       return `<text x="84" y="${top - 2}" font-family="Gaegu" font-weight="700" font-size="20" fill="${INK}">z</text>` +
         `<text x="96" y="${top - 14}" font-family="Gaegu" font-weight="700" font-size="15" fill="${INK}">z</text>`;
@@ -180,7 +185,7 @@ export function tickySvg(mood: MoodKey, tone: Tone, label: string, filterId?: st
   const wide = mood === "melt";
   return `<svg viewBox="0 0 120 140" role="img" aria-label="${label}" overflow="visible">` +
     `<ellipse cx="60" cy="134" rx="${wide ? 50 : 30}" ry="4" fill="rgba(0,0,0,.10)"/>` +
-    `<g class="${look.anim}"><g${filterId ? ` filter="url(#${filterId})"` : ""}>` +
+    `<g class="${look.anim}"${mood === "offline" ? ' opacity="0.5"' : ""}><g${filterId ? ` filter="url(#${filterId})"` : ""}>` +
     (wide ? "" : wick(60, b.top, look.wick)) +
     b.art + extras(mood, b.top, look.h) +
     `</g></g></svg>`;

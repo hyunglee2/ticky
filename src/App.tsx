@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pet } from "./components/Pet";
 import { Toolbar } from "./components/Toolbar";
-import { createFakeFeed } from "./market/fakeFeed";
+import { createHybridFeed } from "./market/hybridFeed";
 import { isMarketOpen } from "./market/hours";
-import type { Quote, WatchItem } from "./market/types";
+import { isKrx, type FeedStatus, type Quote, type WatchItem } from "./market/types";
 import { bandMood, pickLine, type MoodKey } from "./ticky/moods";
 import { applyScale } from "./scale";
-import { useClickThroughRegions } from "./clickThrough";
+import { inTauri, useClickThroughRegions } from "./clickThrough";
 import "./App.css";
 
 const MAX_ITEMS = 5;
@@ -18,7 +18,7 @@ const DEFAULT_WATCHLIST: WatchItem[] = [
   { symbol: "NVDA", name: "엔비디아" },
 ];
 
-// 놀람: a jump of 2% or more within the recent window (~30 s of fake ticks), shown for 3 s
+// 놀람: a jump of 2% or more within the last 20 ticks (~30 s fake, ~5 min live), shown for 3 s
 const SHOCK_WINDOW = 20, SHOCK_PCT = 2, SHOCK_MS = 3000;
 
 // per-viewer conveniences; the app works the same if storage is unavailable
@@ -43,7 +43,10 @@ export default function App() {
   const [pets, setPets] = useState<Record<string, PetState>>({});
   const petsRef = useRef(pets);
   petsRef.current = pets;
-  const feed = useMemo(() => createFakeFeed(), []);
+  // live US quotes need the Rust side, so only in the desktop app (not the browser preview)
+  const liveEnabled = useMemo(() => inTauri(), []);
+  const [status, setStatus] = useState<FeedStatus>({ live: "off", missing: [] });
+  const feed = useMemo(() => createHybridFeed(liveEnabled), [liveEnabled]);
   useClickThroughRegions();
 
   useEffect(() => save("ticky.watchlist", items), [items]);
@@ -56,7 +59,7 @@ export default function App() {
   }, [scale]);
 
   useEffect(() => {
-    return feed.subscribe(items, (q) => setQuotes((prev) => ({ ...prev, [q.symbol]: q })));
+    return feed.subscribe(items, (q) => setQuotes((prev) => ({ ...prev, [q.symbol]: q })), setStatus);
   }, [feed, items]);
 
   // derive each Ticky's mood from its quote; pick a new line only when the mood changes
@@ -64,9 +67,18 @@ export default function App() {
     const now = Date.now();
     const next: Record<string, PetState> = {};
     let changed = false;
+    const liveDown = status.live === "rate-limit" || status.live === "error";
     for (const { symbol } of items) {
       const q = quotes[symbol];
       const old = petsRef.current[symbol];
+      // 연결 끊김: the live API doesn't know this ticker, or the live connection is failing
+      const isLive = liveEnabled && !isKrx(symbol);
+      if (isLive && (status.missing.includes(symbol) || (liveDown && (!q || q.source === "live")))) {
+        const line = old?.mood === "offline" ? old.line : pickLine("offline");
+        next[symbol] = { band: old?.band ?? "calm", mood: "offline", line, shockUntil: 0 };
+        if (old?.mood !== "offline") changed = true;
+        continue;
+      }
       if (!q) continue;
       const band = bandMood(q.changePct, old?.band);
       const h = q.history;
@@ -74,14 +86,17 @@ export default function App() {
       const jumped = Math.abs((h[h.length - 1] / recent - 1) * 100) >= SHOCK_PCT;
       let shockUntil = old?.shockUntil ?? 0;
       if (jumped && now >= shockUntil + SHOCK_MS) shockUntil = now + SHOCK_MS;
-      const mood: MoodKey =
-        followHours && !isMarketOpen(symbol) ? "sleep" : now < shockUntil ? "shock" : band;
+      // live quotes know their session (pre-market and after-hours count as awake);
+      // fake ones fall back to the exchange's regular hours
+      const closed = q.session ? q.session === "closed" : !isMarketOpen(symbol);
+      const mood: MoodKey = followHours && closed ? "sleep" : now < shockUntil ? "shock" : band;
       const line = old && old.mood === mood ? old.line : pickLine(mood);
       next[symbol] = { band, mood, line, shockUntil };
       if (!old || old.mood !== mood || old.band !== band || old.shockUntil !== shockUntil) changed = true;
     }
+    if (Object.keys(next).length !== Object.keys(petsRef.current).length) changed = true;
     if (changed) setPets(next);
-  }, [quotes, items, followHours]);
+  }, [quotes, items, followHours, status, liveEnabled]);
 
   const add = (item: WatchItem) => {
     setItems((list) =>
@@ -99,6 +114,7 @@ export default function App() {
         onFollowHours={setFollowHours}
         scale={scale}
         onScale={setScale}
+        liveStatus={status.live}
       />
       <div className="pets" data-tauri-drag-region>
         {items.map((item) => {
