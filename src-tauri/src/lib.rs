@@ -1,3 +1,4 @@
+mod naver;
 mod yahoo;
 
 use std::{sync::Mutex, thread, time::Duration};
@@ -101,7 +102,8 @@ pub fn run() {
         .manage(HitRegions::default())
         .invoke_handler(tauri::generate_handler![
             set_hit_regions,
-            yahoo::fetch_yahoo_quotes
+            yahoo::fetch_yahoo_quotes,
+            naver::fetch_naver_quotes
         ])
         .setup(|app| {
             let toggle = MenuItem::with_id(app, "toggle", "보이기 / 숨기기", true, None::<&str>)?;

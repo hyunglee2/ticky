@@ -13,15 +13,17 @@ export interface Quote {
   quotedAt?: number;   // ms epoch, when the exchange printed this price (live only)
   source: "fake" | "live";
   session?: Session;   // live only: which part of the trading day the price is from
+  name?: string;       // official name from the data source, when it gives one
 }
 
 export type Session = "pre" | "regular" | "post" | "closed";
 
-/** State of the live (Yahoo) connection, for the settings panel and the 연결 끊김 state. */
+/** State of each live connection, for the settings panel and the 연결 끊김 state. */
 export type LiveStatus = "off" | "connecting" | "ok" | "rate-limit" | "error";
 export interface FeedStatus {
-  live: LiveStatus;
-  missing: string[]; // live symbols the API doesn't know
+  us: LiveStatus;    // Yahoo
+  kr: LiveStatus;    // Naver
+  missing: string[]; // live symbols the sources don't know
 }
 
 /** Anything that can stream quotes: the fake feed, Finnhub, and KIS later. */

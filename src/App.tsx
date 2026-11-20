@@ -45,7 +45,7 @@ export default function App() {
   petsRef.current = pets;
   // live US quotes need the Rust side, so only in the desktop app (not the browser preview)
   const liveEnabled = useMemo(() => inTauri(), []);
-  const [status, setStatus] = useState<FeedStatus>({ live: "off", missing: [] });
+  const [status, setStatus] = useState<FeedStatus>({ us: "off", kr: "off", missing: [] });
   const feed = useMemo(() => createHybridFeed(liveEnabled), [liveEnabled]);
   useClickThroughRegions();
 
@@ -67,13 +67,13 @@ export default function App() {
     const now = Date.now();
     const next: Record<string, PetState> = {};
     let changed = false;
-    const liveDown = status.live === "rate-limit" || status.live === "error";
     for (const { symbol } of items) {
       const q = quotes[symbol];
       const old = petsRef.current[symbol];
-      // 연결 끊김: the live API doesn't know this ticker, or the live connection is failing
-      const isLive = liveEnabled && !isKrx(symbol);
-      if (isLive && (status.missing.includes(symbol) || (liveDown && (!q || q.source === "live")))) {
+      // 연결 끊김: the live source doesn't know this symbol, or that market's connection is failing
+      const market = isKrx(symbol) ? status.kr : status.us;
+      const liveDown = market === "rate-limit" || market === "error";
+      if (liveEnabled && (status.missing.includes(symbol) || (liveDown && (!q || q.source === "live")))) {
         const line = old?.mood === "offline" ? old.line : pickLine("offline");
         next[symbol] = { band: old?.band ?? "calm", mood: "offline", line, shockUntil: 0 };
         if (old?.mood !== "offline") changed = true;
@@ -114,7 +114,7 @@ export default function App() {
         onFollowHours={setFollowHours}
         scale={scale}
         onScale={setScale}
-        liveStatus={status.live}
+        status={status}
       />
       <div className="pets" data-tauri-drag-region>
         {items.map((item) => {

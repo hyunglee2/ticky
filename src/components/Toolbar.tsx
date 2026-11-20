@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { LiveStatus, WatchItem } from "../market/types";
+import type { FeedStatus, LiveStatus, WatchItem } from "../market/types";
 import { SCALES } from "../scale";
 import { inTauri } from "../clickThrough";
 
@@ -10,7 +10,7 @@ interface Props {
   onFollowHours: (on: boolean) => void;
   scale: number;
   onScale: (scale: number) => void;
-  liveStatus: LiveStatus;
+  status: FeedStatus;
 }
 
 const LIVE_TEXT: Record<LiveStatus, string> = {
@@ -21,7 +21,7 @@ const LIVE_TEXT: Record<LiveStatus, string> = {
   error: "연결할 수 없어요",
 };
 
-export function Toolbar({ canAdd, onAdd, followHours, onFollowHours, scale, onScale, liveStatus }: Props) {
+export function Toolbar({ canAdd, onAdd, followHours, onFollowHours, scale, onScale, status }: Props) {
   const [panel, setPanel] = useState<"none" | "add" | "settings">("none");
   const [text, setText] = useState("");
 
@@ -78,15 +78,21 @@ export function Toolbar({ canAdd, onAdd, followHours, onFollowHours, scale, onSc
           </label>
 
           <div className="keybox">
-            <div className="keybox-title">
-              미국 주식 · Yahoo
-              <span className={`live live-${liveStatus}`}>{LIVE_TEXT[liveStatus]}</span>
-            </div>
-            <p className="hint">
-              {inTauri()
-                ? "장 전·장 후 가격까지 15초마다 받아요. 한국 종목은 아직 가짜 시세예요."
-                : "실제 시세는 데스크탑 앱에서만 받아요."}
-            </p>
+            {inTauri() ? (
+              <>
+                <div className="keybox-title">
+                  한국 주식 · 네이버
+                  <span className={`live live-${status.kr}`}>{LIVE_TEXT[status.kr]}</span>
+                </div>
+                <div className="keybox-title">
+                  미국 주식 · Yahoo
+                  <span className={`live live-${status.us}`}>{LIVE_TEXT[status.us]}</span>
+                </div>
+                <p className="hint">한국 7초, 미국 15초마다 받아요. 미국은 장 전·장 후 가격까지 포함해요.</p>
+              </>
+            ) : (
+              <p className="hint">실제 시세는 데스크탑 앱에서만 받아요.</p>
+            )}
           </div>
         </div>
       )}
