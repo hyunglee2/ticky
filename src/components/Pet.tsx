@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { headTop, tickySvg, type Face } from "../ticky/art";
 import { moodName, moodTone, pickFrom, REACT_LINES, type MoodKey, type Tone } from "../ticky/moods";
 import type { TickyEvent } from "../roam";
-import type { Quote, Session, WatchItem } from "../market/types";
+import { displayName, fullName, type Quote, type Session, type WatchItem } from "../market/types";
 import { QuoteCard } from "./QuoteCard";
 
 interface Props {
@@ -136,7 +136,7 @@ export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commu
   const pokes = useRef<number[]>([]);
   const pct = quote?.changePct ?? 0;
   // a stock added by its code shows the source's official name instead of the bare code
-  const name = item.name === item.symbol && quote?.name ? quote.name : item.name;
+  const name = displayName(item, quote);
   const tone = moodTone(mood, pct);
   // markup only changes with the mood, so animations aren't restarted on every price tick
   const svg = useMemo(() => tickySvg(mood, tone, `${name} ${moodName(mood)}`, face), [mood, tone, name, face]);
@@ -247,7 +247,7 @@ export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commu
           )}
         </div>
       )}
-      {showCard && quote && <QuoteCard name={name} moodLabel={moodName(mood)} quote={quote} tone={tone} />}
+      {showCard && quote && <QuoteCard name={name} fullName={fullName(item, quote)} moodLabel={moodName(mood)} quote={quote} tone={tone} />}
       {/* the speech bubble pops up right above the head now and then */}
       <div className="above">
         {said && <div key={said.id} className="bubble">{said.text}</div>}

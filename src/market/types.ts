@@ -39,3 +39,23 @@ export function formatPrice(symbol: string, price: number) {
     ? `${Math.round(price).toLocaleString("ko-KR")}원`
     : `$${price.toFixed(2)}`;
 }
+
+/** Names longer than this get the ticker on name tags and price rows instead. */
+const LONG_NAME = 12;
+
+/**
+ * The short name shown under a Ticky and on price rows. Korean stocks: the name (a bare code like
+ * 005930 means nothing, so the source's official name stands in for it). US stocks: the ticker,
+ * unless the stock has a short name of its own (애플, 엔비디아) — long fund names like
+ * "Direxion Daily Semiconductor Bear 3X ETF" would swamp the screen.
+ */
+export function displayName(item: WatchItem, quote?: Quote): string {
+  if (isKrx(item.symbol)) return item.name === item.symbol && quote?.name ? quote.name : item.name;
+  return item.name === item.symbol || item.name.length > LONG_NAME ? item.symbol : item.name;
+}
+
+/** The full name, for the details card (when it says more than the short one). */
+export function fullName(item: WatchItem, quote?: Quote): string | undefined {
+  const full = quote?.name && quote.name !== item.symbol ? quote.name : item.name;
+  return full !== displayName(item, quote) ? full : undefined;
+}

@@ -26,6 +26,8 @@ const signed = (n: number, digits = 2) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${
 
 interface Props {
   name: string;
+  /** the long official name, shown small under the short one */
+  fullName?: string;
   moodLabel: string;
   quote: Quote;
   tone: Tone;
@@ -33,13 +35,14 @@ interface Props {
 }
 
 /** The stock's details: price, change, today's line and where the price is from. */
-export function QuoteCard({ name, moodLabel, quote, tone, className }: Props) {
+export function QuoteCard({ name, fullName, moodLabel, quote, tone, className }: Props) {
   return (
     <div className={className ? `card ${className}` : "card"}>
       <div className="card-top">
         <span className="card-name">{name}</span>
         <span className="card-mood">{moodLabel}</span>
       </div>
+      {fullName && <div className="card-full" title={fullName}>{fullName}</div>}
       <div className="card-price">{formatPrice(quote.symbol, quote.price)}</div>
       <div className={`card-change ${tone}`}>
         {signed(quote.price - quote.prevClose, quote.prevClose > 1000 ? 0 : 2)} ({signed(quote.changePct)}%)

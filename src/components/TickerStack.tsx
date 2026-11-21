@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { formatPrice, type Quote, type Session, type WatchItem } from "../market/types";
+import { displayName, formatPrice, fullName, type Quote, type Session, type WatchItem } from "../market/types";
 import { moodName, toneFor, type MoodKey } from "../ticky/moods";
 import { QuoteCard } from "./QuoteCard";
 
@@ -117,7 +117,7 @@ export function TickerStack({ items, quotes, moods, onMove, onDelete, inPanel }:
         const pct = q?.changePct ?? 0;
         const tone = !q || offline ? "flat" : toneFor(pct); // same colours as the Tickies' name tags
         // a stock added by its code shows the source's official name instead of the bare code
-        const name = item.name === item.symbol && q?.name ? q.name : item.name;
+        const name = displayName(item, q);
         const badge = q?.session && !offline ? SESSION_BADGE[q.session] : undefined;
 
         // where the row sits: following the pointer, swiped right, or making way in a reorder
@@ -141,7 +141,7 @@ export function TickerStack({ items, quotes, moods, onMove, onDelete, inPanel }:
         return (
           <div key={item.symbol} className="ticker-item" role="listitem">
             {!inPanel && open === item.symbol && q && (
-              <QuoteCard className="ticker-card" name={name} moodLabel={mood ? moodName(mood) : ""} quote={q} tone={tone} />
+              <QuoteCard className="ticker-card" name={name} fullName={fullName(item, q)} moodLabel={mood ? moodName(mood) : ""} quote={q} tone={tone} />
             )}
             {x > 0 && (
               <div className="ticker-delete" data-armed={armed ? "1" : undefined} style={{ width: Math.min(x, 400) }}>

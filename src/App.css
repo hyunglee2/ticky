@@ -724,3 +724,4 @@ g.spark { animation: spark 0.16s steps(2) infinite alternate; transform-box: fil
 .ticker.in-panel .ticker-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .ticker.in-panel .ticker-row[data-slid="1"], .ticker.in-panel[data-dragging] .ticker-row { background: #ece8e1; }
 .ticker.in-panel .ticker-item { display: block; }
+.card-full { margin-top: -1px; font-size: calc(10.5 * var(--u)); color: #999; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
