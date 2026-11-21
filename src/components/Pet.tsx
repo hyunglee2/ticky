@@ -27,7 +27,7 @@ const rand = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
 
 // speech bubbles pop up now and then instead of staying up
 const SAY_MS = [3200, 4800];   // how long a bubble stays
-const QUIET_MS = [5000, 15000]; // pause between bubbles
+const QUIET_MS = [4000, 11000]; // pause between bubbles
 const ALARM_QUIET_MS = [400, 800]; // 비상 is short: its follow-up line comes right after
 const HINT_CHANCE = 0.4;        // situational lines beat mood lines
 const REACT_MS = 2200;          // a reaction (poke, throw, meeting) bubble

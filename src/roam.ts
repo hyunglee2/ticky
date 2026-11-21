@@ -14,7 +14,7 @@ import { inTauri } from "./clickThrough";
 /** walking speed in px per second at the normal size */
 const SPEED: Record<MoodKey, number> = {
   // a real market spends most of the day in the quiet moods, so those still get a lively stroll
-  boom: 80, cheer: 66, happy: 52, good: 42, calm: 34, sulky: 25, sad: 17,
+  boom: 85, cheer: 72, happy: 60, good: 52, calm: 44, sulky: 34, sad: 24,
   shock: 0, melt: 0, blast: 0, sleep: 0, offline: 0,
   alarm: 95, // scurries around sounding the alarm
 };
@@ -47,6 +47,7 @@ const MEET_CHANCE = 0.6;
 const MEET_COOLDOWN = 45_000; // per pair, whether or not they stopped to chat
 const MEET_PAUSE = 3200;
 const MEET_HOP_CHANCE = 0.12;
+const IDLE_HOP_CHANCE = 0.1; // a little hop when it stops for a rest
 const PASS_CHANCE = 0.7; // when they don't chat: walk past each other (else both turn around)
 
 /** What the Pet component hears about (see Pet.tsx) */
@@ -334,14 +335,21 @@ export function useRoaming(moods: Record<string, MoodKey>) {
           el.dataset.righting = w.rightAt ? "1" : "0";
           const stay = el.dataset.stay === "1";
           const dizzy = now < w.dizzyUntil;
-          const speed = SPEED[moodsRef.current[symbol] ?? "calm"] * scale;
+          // small Tickies walk a bit slower, but not in proportion (or "작게" looks sluggish)
+          const speed = SPEED[moodsRef.current[symbol] ?? "calm"] * Math.sqrt(scale);
           const held = speed === 0 || stay || dizzy || !!w.rightAt || el.matches(":hover");
           if (held) {
             w.walking = false;
           } else if (now >= w.until) {
             w.walking = !w.walking;
-            w.until = now + (w.walking ? rand(2500, 6000) : rand(900, 3200)); // shorter rests: livelier
+            w.until = now + (w.walking ? rand(2500, 6000) : rand(600, 2200)); // short rests: lively
             if (w.walking && Math.random() < 0.4) w.dir = w.dir === 1 ? -1 : 1;
+            // stopping now and then with a little hop, or a look the other way
+            if (!w.walking) {
+              const r = Math.random();
+              if (r < IDLE_HOP_CHANCE) el.dataset.hop = el.dataset.hop === "a" ? "b" : "a";
+              else if (r < IDLE_HOP_CHANCE + 0.25) setTimeout(() => { if (!w.walking) w.dir = w.dir === 1 ? -1 : 1; }, rand(300, 900));
+            }
           }
           if (w.walking) w.x += w.dir * speed * dt;
           if (w.x <= EDGE) { w.x = EDGE; w.dir = 1; }
