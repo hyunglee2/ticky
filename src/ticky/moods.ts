@@ -90,3 +90,33 @@ export const ALARM_LINES: Record<AlarmReason, [string, string]> = {
   boom:     ["10% 돌파!", "간다간다간다"],
   blast:    ["-10% 진입!", "이건 좀 심한데"],
 };
+
+/**
+ * Lines for being handled: picked up, thrown, poked, or bumping into another Ticky.
+ * Each pool goes with one face (Pet.tsx reaction()), so what it says matches how it looks.
+ */
+export const REACT_LINES = {
+  grab:     ["으앗", "내려줘!", "높다...", "흔들지 마", "놔줘!", "무서워", "나 고소공포증 있음", "괴롭히지 마", "이게 뭐야"], // startled
+  grabHappy: ["우와 높다!", "어디 데려가?", "히히", "나 들렸어!"],                                                       // pleased
+  fun:   ["히히 재밌당", "또 또!", "한 번 더!", "꺄르르", "재밌다", "놀이기구 같아", "또 해 줘"],
+  land:  ["휴", "착지 성공", "됐다", "살았다", "무사 착지", "10점 만점에 10점"],
+  huff:  ["흥!", "다시는 그러지 마", "나 화났어", "함부로 옮기지 마", "왜 맘대로 옮겨"],
+  shy:   ["헤헤", "부끄럽게 왜 그래", "나 무거웠지?", "어머"],
+  crash: ["어지러워...", "아야", "살살 좀;;", "별이 보여", "괴롭히지 마...", "나한테 왜 그래", "머리 아파"],
+  poke: {
+    up:   ["히히", "간지러워", "왜~", "기분 좋아", "뭐야 ㅋㅋ", "또 찔러 봐"],
+    down: ["건드리지 마...", "지금 그럴 기분 아님", "하...", "괴롭히지 마", "나 지금 예민해", "저리 가"],
+    flat: ["응?", "왜?", "뭐", "...", "불렀어?", "심심해?"],
+  },
+  pokeSleep:   ["5분만...", "zzz..", "깨우지 마", "음냐.."],
+  pokeOffline: ["나 지금 연결 안 됨", "...", "지금 아무것도 안 보여"],
+  angry: ["그만 찔러", "아 왜!!", "화났어", "진짜 그만", "괴롭히지 마!", "신고할 거야", "손가락 치워"],
+  // meeting another Ticky: [my tone][their tone]; anyone flat just says hi
+  meet: {
+    upUp:     ["하이파이브!", "오늘 우리 좋다", "너도 올랐네?"],
+    upDown:   ["괜찮아?", "힘내", "토닥토닥"],
+    downUp:   ["부럽다...", "좋겠다", "나도 데려가"],
+    downDown: ["우리 왜 이래", "같이 버티자", "너도냐..."],
+    hi:       ["안녕", "뭐 해?", "ㅎㅇ"],
+  },
+};

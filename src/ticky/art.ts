@@ -9,10 +9,31 @@ const TEAR = "#8cc4ff";
 const toneVar = (tone: Tone) => `var(--${tone})`;
 const lidVar = (tone: Tone) => `var(--${tone}-lid)`;
 
-type EyeKind = "up" | "look" | "lid" | "heavy" | "smug" | "daze" | "lidclosed" | "blank";
-type MouthKind = "open" | "smile" | "wobble" | "tiny" | "flat" | "smirk" | "drool" | "puff";
+type EyeKind = "up" | "look" | "lid" | "heavy" | "smug" | "daze" | "lidclosed" | "blank"
+  | "wide" | "squeeze" | "spiral" | "angry" | "happy" | "bashful" | "confused";
+type MouthKind = "open" | "smile" | "wobble" | "tiny" | "flat" | "smirk" | "drool" | "puff"
+  | "scream" | "grit" | "grin" | "pout" | "cat" | "laugh" | "shout" | "slant" | "fluster";
 type WickKind = "perky" | "calm" | "droop" | "frizz" | "none";
 type Anim = "hop" | "bob" | "idle" | "sway" | "melt" | "shake";
+
+/** A short-lived face for being handled; replaces the mood's eyes, mouth and props for a moment. */
+export type Face = "grab" | "fly" | "flyJoy" | "flyPanic" | "dizzy" | "wince" | "sulk" | "angry" | "happy" | "relief" | "shy";
+
+const FACES: Record<Face, { eye: EyeKind; mouth: MouthKind; wick?: WickKind }> = {
+  grab:   { eye: "wide",    mouth: "open",   wick: "perky" }, // picked up: startled, sweating
+  // thrown: one of three, picked at random for each throw
+  fly:      { eye: "wide",     mouth: "scream", wick: "perky" }, // scared: tiny pupils, screaming
+  flyJoy:   { eye: "up",       mouth: "laugh",  wick: "perky" }, // loving it: wheee
+  flyPanic: { eye: "confused", mouth: "shout",  wick: "frizz" }, // flailing: eyes all over the place
+  dizzy:  { eye: "spiral",  mouth: "wobble", wick: "frizz" }, // hard landing: spinning eyes, stars
+  wince:  { eye: "confused", mouth: "slant" },                // poked: "huh?" — eyes askew, crooked mouth
+  sulk:   { eye: "lid",     mouth: "pout",   wick: "droop" }, // poked on a down day: grumpy, heavy lids
+  angry:  { eye: "angry",   mouth: "shout" },                 // cross: lids slanting in, small open grumble
+  // eyes stay whole (round whites + pupils): smiles live in the mouth, moods in the top lids
+  happy:  { eye: "up",      mouth: "laugh",  wick: "perky" }, // had fun / met a friend: big open laugh
+  relief: { eye: "look",    mouth: "smile" },                 // soft landing
+  shy:    { eye: "bashful", mouth: "fluster" },               // embarrassed: wide eyes darting away, wobbly little mouth, pink cheeks
+};
 
 interface Look {
   h: number; // body length: bigger move, longer candle (0 = melted puddle)
@@ -49,11 +70,66 @@ function lidShape(x: number, y: number, rx: number, ry: number, amount: number, 
     `<path d="M${x - dx} ${cutY} L${x + dx} ${cutY}" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/>`;
 }
 
+// the part of the eye oval above a slanted line (yl at the left edge, yr at the right edge)
+function slantLid(x: number, y: number, yl: number, yr: number, color: string) {
+  const lineY = (px: number) => yl + ((px - (x - RX)) / (2 * RX)) * (yr - yl);
+  const pts: [number, number][] = [];
+  const cross: [number, number][] = [];
+  const N = 48;
+  let prev: [number, number] | null = null;
+  for (let i = 0; i <= N; i++) {
+    const a = (i / N) * Math.PI * 2;
+    const p: [number, number] = [x + RX * Math.cos(a), y + RY * Math.sin(a)];
+    const above = p[1] <= lineY(p[0]);
+    if (prev) {
+      const prevAbove = prev[1] <= lineY(prev[0]);
+      if (above !== prevAbove) { // crossing: add the point where the outline meets the line
+        const f = (lineY(prev[0]) - prev[1]) / ((p[1] - prev[1]) - (lineY(p[0]) - lineY(prev[0])));
+        const c: [number, number] = [prev[0] + (p[0] - prev[0]) * f, prev[1] + (p[1] - prev[1]) * f];
+        pts.push(c);
+        cross.push(c);
+      }
+    }
+    if (above) pts.push(p);
+    prev = p;
+  }
+  const d = pts.map(([px, py], i) => `${i ? "L" : "M"}${px.toFixed(2)} ${py.toFixed(2)}`).join(" ") + "Z";
+  // the lid's edge: a line between the two points where it meets the eye outline
+  const [a, b] = cross.length >= 2 ? cross : [[x - RX, yl], [x + RX, yr]];
+  return `<path d="${d}" fill="${color}"/>` +
+    `<path d="M${a[0].toFixed(2)} ${a[1].toFixed(2)} L${b[0].toFixed(2)} ${b[1].toFixed(2)}" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/>`;
+}
+
 // eye shape from eyes.svg: tall white oval (2:3) with a tall oval pupil set to the right
 const RX = 7.5, RY = 11.25, PRX = 3.6, PRY = 5.55, PX = 3.9;
 const LID: Partial<Record<EyeKind, number>> = { lid: 1 / 3, heavy: 1 / 2, blank: 1 / 2 };
 
 function eye(x: number, y: number, kind: EyeKind, tone: Tone) {
+  const left = x < 60;
+  const ink = (d: string, w = 2.6) => `<path d="${d}" fill="none" stroke="${INK}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const white = `<ellipse cx="${x}" cy="${y}" rx="${RX}" ry="${RY}" fill="#fff"/>`;
+  switch (kind) {
+    case "wide": // tiny pupils in big whites
+      return white + `<ellipse cx="${x}" cy="${y - 1}" rx="2.3" ry="3.2" fill="${INK}"/>`;
+    case "squeeze": // > <
+      return left ? ink(`M${x - 5} ${y - 6} L${x + 4} ${y} L${x - 5} ${y + 6}`, 3)
+        : ink(`M${x + 5} ${y - 6} L${x - 4} ${y} L${x + 5} ${y + 6}`, 3);
+    case "spiral":
+      return white + ink(`M${x} ${y} a1.6 1.6 0 1 1 1.6 1.6 a3.4 3.4 0 1 1 -3.4 -3.4 a5.4 5.4 0 1 1 5.4 5.4`, 1.8);
+    case "angry": { // whole round eye, the top lid cut on a slant down toward the middle
+      const outer = y - RY * 0.55, inner = y - RY * 0.05; // lid edge height at the outer / inner side
+      return white + `<ellipse cx="${x + (left ? 1.2 : -1.2)}" cy="${y + 2.5}" rx="${PRX}" ry="${PRY}" fill="${INK}"/>` +
+        slantLid(x, y, left ? outer : inner, left ? inner : outer, lidVar(tone));
+    }
+    case "confused": // pupils wandering different ways
+      return white + (left
+        ? `<ellipse cx="${x - 2.5}" cy="${y - 3.5}" rx="${PRX}" ry="${PRY}" fill="${INK}"/>`
+        : `<ellipse cx="${x + 3}" cy="${y + 2.5}" rx="${PRX}" ry="${PRY}" fill="${INK}"/>`);
+    case "bashful": // whole round eyes darting off to the side (no lids)
+      return white + `<ellipse cx="${x - PX}" cy="${y - 1.5}" rx="${PRX}" ry="${PRY}" fill="${INK}"/>`;
+    case "happy": // ^ ^
+      return ink(`M${x - 6} ${y + 2} q6 -10 12 0`, 3);
+  }
   if (kind === "lidclosed") {
     return `<ellipse cx="${x}" cy="${y}" rx="${RX}" ry="${RY}" fill="${lidVar(tone)}"/>` +
       `<path d="M${x - 6.5} ${y + 3} q6.5 5.5 13 0" fill="none" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/>`;
@@ -85,6 +161,18 @@ function mouth(x: number, y: number, kind: MouthKind) {
     case "smirk":  return line(`M${x - 4} ${y + 1} q5 2.5 9 -3`);
     case "drool":  return line(`M${x - 4} ${y} h7`) +
       `<path d="M${x + 2} ${y + 1} v7" stroke="#fff" stroke-width="3" stroke-linecap="round"/>`;
+    case "scream": return `<ellipse cx="${x}" cy="${y + 3}" rx="5.4" ry="7" fill="${INK}"/>` +
+      `<ellipse cx="${x}" cy="${y + 7.5}" rx="3" ry="2" fill="#ff8a95"/>`;
+    case "grit":   return `<rect x="${x - 6}" y="${y - 2}" width="12" height="6" rx="2" fill="#fff" stroke="${INK}" stroke-width="2.2"/>` +
+      line(`M${x - 2} ${y - 2} v6 M${x + 2} ${y - 2} v6`, 1.6);
+    case "laugh":  return `<path d="M${x - 7} ${y - 2} q7 13 14 0 z" fill="${INK}"/>` +
+      `<path d="M${x - 3.5} ${y + 4.2} q3.5 -2.6 7 0 q-3.5 2.2 -7 0z" fill="#ff8a95"/>`;
+    case "shout":  return `<path d="M${x - 4.5} ${y + 4} q0 -6 4.5 -6 q4.5 0 4.5 6 q-4.5 -1.6 -9 0z" fill="${INK}"/>`;
+    case "slant":  return line(`M${x - 4.5} ${y - 1} L${x + 4.5} ${y + 2}`);
+    case "fluster": return line(`M${x - 4} ${y + 1} q1 -2 2 0 t2 0 t2 0 t2 0`, 2.2);
+    case "cat":    return line(`M${x - 5} ${y} q2.5 3.5 5 0 q2.5 3.5 5 0`, 2.4); // ω
+    case "pout":   return line(`M${x - 4} ${y + 3} q4 -4 8 0`);
+    case "grin":   return `<path d="M${x - 6} ${y - 1} q6 10 12 0 z" fill="${INK}"/>`;
     case "puff":   return `<ellipse cx="${x}" cy="${y + 1}" rx="2.6" ry="3" fill="${INK}"/>` +
       `<circle class="puff" cx="${x + 8}" cy="${y - 1}" r="3.2" fill="#a3a8b0"/>`;
     default:       return line(`M${x - 4} ${y} h8`);
@@ -158,6 +246,30 @@ function extras(mood: MoodKey, top: number, h: number) {
   }
 }
 
+/** Props that go with a reaction face */
+function faceExtras(face: Face, top: number) {
+  switch (face) {
+    case "grab": // a sweat drop
+      return `<path d="M94 ${top + 6} q-4 8 0 11 q4 -3 0 -11z" fill="${TEAR}" stroke="${INK}" stroke-width="1.4"/>`;
+    case "fly": case "flyJoy": case "flyPanic": // whoosh lines
+      return `<path d="M14 ${top + 20} h12 M10 ${top + 32} h14 M16 ${top + 44} h9" stroke="${INK}" stroke-width="2.4" stroke-linecap="round" opacity=".55"/>`;
+    case "dizzy": // stars circling the head
+      return `<g class="orbit" style="transform-origin: 60px ${top - 8}px">` +
+        sparkle(38, top - 10, 1.8) + sparkle(80, top - 12, 1.8) + sparkle(60, top - 20, 1.4) + `</g>`;
+    case "angry": // a small anger mark + a puff of steam
+      return `<path d="M92 ${top + 4} q2.5 2.5 0 5 M97 ${top + 4} q-2.5 2.5 0 5" fill="none" stroke="#e5484d" stroke-width="2" stroke-linecap="round"/>` +
+        `<circle class="puff" cx="26" cy="${top - 2}" r="3.5" fill="#d5d8dc"/>`;
+    case "shy": // soft pink cheeks + a little sweat drop
+      return `<ellipse cx="40" cy="${top + 40}" rx="5.5" ry="3.2" fill="#ff8fa6" opacity=".7"/>` +
+        `<ellipse cx="80" cy="${top + 40}" rx="5.5" ry="3.2" fill="#ff8fa6" opacity=".7"/>` +
+        `<path d="M94 ${top + 8} q-3.5 7 0 10 q3.5 -3 0 -10z" fill="${TEAR}" stroke="${INK}" stroke-width="1.3"/>`;
+    case "happy": // little sparkles
+      return `<g class="heart">${sparkle(98, top + 6, 2.2)}</g><g class="heart h2">${sparkle(20, top + 18, 1.6)}</g>`;
+    default:
+      return "";
+  }
+}
+
 const TEAR_AT = (x: number, y: number) => `<path d="M${x} ${y} q-2.5 6 0 9 q2.5 -3 0 -9z" fill="${TEAR}"/>`;
 
 function body(mood: MoodKey, look: Look, tone: Tone) {
@@ -216,8 +328,10 @@ export function headTop(mood: MoodKey): number {
  * Full SVG markup for one Ticky. Pass `filterId` to apply the hand-drawn boil wobble;
  * it is off by default because WebView2 rasterises SVG filters at 1x, which makes edges jagged.
  */
-export function tickySvg(mood: MoodKey, tone: Tone, label: string, filterId?: string) {
-  const look = LOOKS[mood];
+export function tickySvg(mood: MoodKey, tone: Tone, label: string, face?: Face, filterId?: string) {
+  const f = face ? FACES[face] : undefined;
+  const base = LOOKS[mood];
+  const look = f ? { ...base, eye: f.eye, mouth: f.mouth, wick: f.wick ?? base.wick } : base;
   const b = body(mood, look, tone);
   const wide = mood === "melt";
   return `<svg viewBox="0 0 120 140" role="img" aria-label="${label}" overflow="visible">` +
@@ -227,6 +341,6 @@ export function tickySvg(mood: MoodKey, tone: Tone, label: string, filterId?: st
     b.feet +
     `<g class="upper">` +
     (wide ? "" : `<g class="wick">${wick(60, b.top, look.wick)}</g>`) +
-    b.art + extras(mood, b.top, look.h) +
+    b.art + (face ? faceExtras(face, b.top) : extras(mood, b.top, look.h)) +
     `</g></g></g></svg>`;
 }

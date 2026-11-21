@@ -229,6 +229,7 @@ export default function App() {
                   pool={p.mood === "alarm" && p.alarmReason ? [ALARM_LINES[p.alarmReason][1]] : moodLines(p.mood)}
                   hint={p.trend ? TREND_LINES[p.trend] : undefined}
                   onRemove={() => watch.setShown(item.symbol, false)}
+                  onDelete={() => watch.remove(item.symbol)}
                 />
               ) : null;
             })}

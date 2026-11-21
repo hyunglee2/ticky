@@ -32,7 +32,7 @@ export function useTextScale() {
 }
 
 // everything that can stick out of the window: Tickies (with bubbles), toolbar, cards, panels
-const CONTENT = ".pet, .above, .card, .toolbar, .panel, .onboard, .empty";
+const CONTENT = ".pet, .above, .card, .menu, .toolbar, .panel, .onboard, .empty";
 const MARGIN = 6;      // breathing room around the content, in CSS px
 const SHRINK_MS = 1500; // wait before shrinking (after a panel closes)
 const CARD_EST = 140;  // hover card height in text units, until a real one has been measured
@@ -72,6 +72,8 @@ export function useDockHeight() {
 
     const tick = async () => {
       if (busy) return;
+      // a carried or flying Ticky keeps the window full height until it lands
+      if (document.querySelector('.pet[data-held="1"], .pet[data-air="1"]')) { shrinkSince = 0; return; }
       let top = reservedTop();
       for (const el of document.querySelectorAll(CONTENT)) {
         const r = el.getBoundingClientRect();

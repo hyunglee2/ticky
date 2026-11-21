@@ -468,3 +468,85 @@ g.spark { animation: spark 0.16s steps(2) infinite alternate; transform-box: fil
 @media (prefers-reduced-motion: reduce) {
   .hop, .bob, .idle, .sway, .melt, .shake, g.spark, .puff, .bubble, .beam, .waves { animation: none; }
 }
+
+/* ---- handling: pick up, throw, poke, right-click ---- */
+.pet { transform-origin: 50% 100%; touch-action: none; user-select: none; cursor: grab; }
+.pet[data-held="1"], .pet[data-air="1"] { cursor: grabbing; z-index: 10; }
+.pet[data-held="1"] .card, .pet[data-air="1"] .card { display: none; }
+/* held: the mood motion stops and the feet dangle */
+.pet[data-held="1"] .art svg > g { animation: none; }
+.pet[data-held="1"] .foot {
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+  animation: dangle 0.45s ease-in-out infinite alternate;
+}
+.pet[data-held="1"] .foot-r { animation-delay: -0.22s; }
+@keyframes dangle { from { transform: rotate(-14deg); } to { transform: rotate(14deg); } }
+/* a hard landing: woozy for a moment */
+.pet[data-dizzy="1"] .art { transform-origin: 50% 100%; animation: dizzy 0.7s ease-in-out infinite; }
+@keyframes dizzy { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(7deg); } }
+/* poked: a quick squish (two names so every poke restarts it) */
+.pet[data-poke="a"] .art { transform-origin: 50% 100%; animation: squish-a 0.32s ease-out; }
+.pet[data-poke="b"] .art { transform-origin: 50% 100%; animation: squish-b 0.32s ease-out; }
+@keyframes squish-a { 0% { transform: scale(1.1, 0.86); } 55% { transform: scale(0.95, 1.06); } 100% { transform: none; } }
+@keyframes squish-b { 0% { transform: scale(1.1, 0.86); } 55% { transform: scale(0.95, 1.06); } 100% { transform: none; } }
+/* poked too often: cross and shaking */
+.pet[data-angry="1"] .art { animation: cross 0.16s linear infinite; }
+@keyframes cross { 0%, 100% { transform: translateX(-1px); } 50% { transform: translateX(1px); } }
+
+.menu {
+  position: absolute;
+  bottom: calc(var(--head) * 102 / 140 * var(--p) + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  min-width: calc(112 * var(--u));
+  padding: calc(3 * var(--u));
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: calc(10 * var(--u));
+  z-index: 3;
+  cursor: default;
+}
+.menu button {
+  padding: calc(4 * var(--u)) calc(8 * var(--u));
+  font: 400 calc(14 * var(--u))/1.2 "Gaegu", sans-serif;
+  color: var(--ink);
+  text-align: left;
+  white-space: nowrap;
+  background: none;
+  border: 0;
+  border-radius: calc(6 * var(--u));
+  cursor: pointer;
+}
+.menu button:hover { background: #f3f1ec; }
+.menu button.danger { color: #c4473a; }
+
+/* ---- reaction motion ---- */
+/* held: wriggles to get free; feet kick in the air while flying too */
+.pet[data-held="1"] .figure { transform-origin: 50% 100%; animation: wriggle 0.28s ease-in-out infinite alternate; }
+@keyframes wriggle { from { transform: rotate(-4deg) scaleY(1.04); } to { transform: rotate(4deg) scaleY(0.98); } }
+.pet[data-air="1"] .foot {
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+  animation: dangle 0.18s ease-in-out infinite alternate;
+}
+.pet[data-air="1"] .foot-r { animation-delay: -0.09s; }
+/* meeting a friend: a little hop */
+.pet[data-hop="a"] .figure { animation: greet-a 0.5s ease-out 2; }
+.pet[data-hop="b"] .figure { animation: greet-b 0.5s ease-out 2; }
+@keyframes greet-a { 0%, 100% { transform: none; } 40% { transform: translateY(-12px); } }
+@keyframes greet-b { 0%, 100% { transform: none; } 40% { transform: translateY(-12px); } }
+/* props of the reaction faces */
+.orbit { animation: orbit 1.1s linear infinite; }
+@keyframes orbit { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.heart { transform-box: fill-box; transform-origin: 50% 100%; animation: heart 0.8s ease-out infinite; }
+.heart.h2 { animation-delay: -0.4s; }
+@keyframes heart { 0% { transform: translateY(4px) scale(0.6); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(-8px) scale(1); opacity: 0; } }
+/* dizzy and cross outrank the leftover poke squish (its attribute stays after the animation) */
+.pet[data-dizzy="1"] .art { transform-origin: 50% 100%; animation: dizzy 0.7s ease-in-out infinite; }
+.pet[data-angry="1"] .art { animation: cross 0.16s linear infinite; }
+/* carried or flying: the name tag stays out of the way until it lands */
+.pet > .tag { transition: opacity 0.2s ease-out; }
+.pet[data-held="1"] > .tag, .pet[data-air="1"] > .tag, .pet[data-righting="1"] > .tag { opacity: 0; transition: none; }

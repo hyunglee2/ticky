@@ -5,7 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 export const inTauri = () => "__TAURI_INTERNALS__" in window;
 
-const SELECTOR = ".pet, .card, .toolbar, .panel, .onboard";
+const SELECTOR = ".pet, .card, .menu, .toolbar, .panel, .onboard";
 const PAD = 4; // a little slack around each part so the edge isn't fiddly
 
 export function useClickThroughRegions() {
@@ -13,10 +13,14 @@ export function useClickThroughRegions() {
     if (!inTauri()) return;
     let last = "";
     const send = () => {
-      const rects = [...document.querySelectorAll(SELECTOR)].map((el) => {
-        const r = el.getBoundingClientRect();
-        return [r.left - PAD, r.top - PAD, r.width + PAD * 2, r.height + PAD * 2].map(Math.round);
-      });
+      // while a Ticky is carried or flying, the whole window catches the mouse so the drag never drops
+      const grabbing = document.querySelector('.pet[data-held="1"], .pet[data-air="1"]');
+      const rects = grabbing
+        ? [[0, 0, window.innerWidth, window.innerHeight]]
+        : [...document.querySelectorAll(SELECTOR)].map((el) => {
+            const r = el.getBoundingClientRect();
+            return [r.left - PAD, r.top - PAD, r.width + PAD * 2, r.height + PAD * 2].map(Math.round);
+          });
       const key = JSON.stringify(rects);
       if (key === last) return;
       last = key;
@@ -25,6 +29,7 @@ export function useClickThroughRegions() {
     send();
     // layout changes with hover cards, panels, adding/removing stocks and the size setting
     const id = setInterval(send, 150);
-    return () => clearInterval(id);
+    window.addEventListener("ticky:regions", send); // a pick-up can't wait for the next tick
+    return () => { clearInterval(id); window.removeEventListener("ticky:regions", send); };
   }, []);
 }
