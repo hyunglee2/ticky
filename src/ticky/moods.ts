@@ -80,11 +80,9 @@ export function pickLine(mood: MoodKey, avoid?: string): string {
 }
 
 /** What set off 비상. Each reason has its own first line and a follow-up. */
-export type AlarmReason = "target" | "stop" | "jumpUp" | "jumpDown" | "boom" | "blast";
+export type AlarmReason = "jumpUp" | "jumpDown" | "boom" | "blast";
 
 export const ALARM_LINES: Record<AlarmReason, [string, string]> = {
-  target:   ["목표가 찍었다!", "드디어!!"],
-  stop:     ["손절가 도달!", "비상! 비상!"],
   jumpUp:   ["5분 만에 +3%", "뭐야 갑자기 ㅋㅋ"],
   jumpDown: ["5분 만에 -3%", "잠깐만..."],
   boom:     ["10% 돌파!", "간다간다간다"],
@@ -108,6 +106,8 @@ export const REACT_LINES = {
     down: ["건드리지 마...", "지금 그럴 기분 아님", "하...", "괴롭히지 마", "나 지금 예민해", "저리 가"],
     flat: ["응?", "왜?", "뭐", "...", "불렀어?", "심심해?"],
   },
+  leave:  ["퇴근!", "수고하셨습니다~", "내일 봐!", "칼퇴 간다", "먼저 들어갈게요"],
+  arrive: ["티키 등장!", "짠!", "나 왔어~", "출근!", "좋은 아침~", "오늘도 힘내자", "출근 완료", "왔다!"],
   pokeSleep:   ["5분만...", "zzz..", "깨우지 마", "음냐.."],
   pokeOffline: ["나 지금 연결 안 됨", "...", "지금 아무것도 안 보여"],
   angry: ["그만 찔러", "아 왜!!", "화났어", "진짜 그만", "괴롭히지 마!", "신고할 거야", "손가락 치워"],

@@ -32,17 +32,20 @@ export function useTextScale() {
 }
 
 // everything that can stick out of the window: Tickies (with bubbles), toolbar, cards, panels
-const CONTENT = ".pet, .above, .card, .menu, .toolbar, .panel, .onboard, .empty";
+const CONTENT = ".pet, .above, .card, .menu, .ticker, .toolbar, .panel, .onboard, .empty";
 const MARGIN = 6;      // breathing room around the content, in CSS px
 const SHRINK_MS = 1500; // wait before shrinking (after a panel closes)
-const CARD_EST = 140;  // hover card height in text units, until a real one has been measured
+const PANEL_EST = 290; // tallest toolbar panel (settings with both price sources, or the watchlist), same units
+const CARD_EST = 170;  // details card height in text units (a bit over the real ~130-150), until one is measured
 
 /**
  * Resizing a transparent window makes Windows repaint it, which shows as a flicker. So the
- * height always leaves room above every head for the hover card (taller than any speech
- * bubble): hovering and chatter never resize the window, only opening a panel does.
+ * height always leaves room for everything that pops up: the details card above every head
+ * (taller than any speech bubble) or beside a price row, and the toolbar's panels. Hovering,
+ * chatter and opening panels never resize the window.
  */
 let cardHeight = 0;
+let panelHeight = 0;
 function reservedTop(): number {
   const card = document.querySelector(".card");
   if (card) cardHeight = Math.max(cardHeight, card.getBoundingClientRect().height);
@@ -55,6 +58,17 @@ function reservedTop(): number {
     const head = parseFloat(fig.style.getPropertyValue("--head")) || 100; // SVG units
     const anchor = fig.getBoundingClientRect().bottom - (head * 102 / 140) * s - 2;
     top = Math.min(top, anchor - h);
+  }
+  // the toolbar's panels (settings, watchlist) open upward from its bottom: keep room for the
+  // tallest so opening one never resizes the window either
+  const toolbar = document.querySelector(".toolbar");
+  const panel = document.querySelector(".panel");
+  if (panel) panelHeight = Math.max(panelHeight, panel.getBoundingClientRect().height);
+  if (toolbar) top = Math.min(top, toolbar.getBoundingClientRect().bottom - Math.max(panelHeight, PANEL_EST * t) - 4);
+  // 퇴근 layout: a price row's details card opens beside it, bottom-aligned with the row.
+  // Measured on the row's slot, not the row itself, so dragging a row about never resizes the window.
+  for (const item of document.querySelectorAll<HTMLElement>(".ticker:not(.in-panel) .ticker-item")) {
+    top = Math.min(top, item.getBoundingClientRect().bottom - h);
   }
   return top;
 }

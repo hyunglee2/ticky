@@ -1,9 +1,11 @@
 import { useState } from "react";
-import type { FeedStatus, LiveStatus } from "../market/types";
+import type { FeedStatus, LiveStatus, Quote } from "../market/types";
+import type { MoodKey } from "../ticky/moods";
 import { SCALES } from "../scale";
 import { inTauri } from "../clickThrough";
 import type { Watchlist } from "../watchlist";
 import { WatchlistPanel } from "./WatchlistPanel";
+import type { Layout } from "../App";
 
 interface Props {
   watch: Watchlist;
@@ -11,12 +13,21 @@ interface Props {
   onFollowHours: (on: boolean) => void;
   wakeExtended: boolean;
   onWakeExtended: (on: boolean) => void;
+  layout: Layout;
+  onLayout: (layout: Layout) => void;
   scale: number;
   onScale: (scale: number) => void;
   preview: boolean;
   onPreview: (on: boolean) => void;
   status: FeedStatus;
+  quotes: Record<string, Quote>;
+  moods: Record<string, MoodKey>;
 }
+
+const LAYOUTS: { value: Layout; label: string; hint: string }[] = [
+  { value: "roam", label: "티키 출근", hint: "화면 아래를 돌아다녀요" },
+  { value: "prices", label: "티키 퇴근", hint: "시세만 오른쪽 아래에 쌓아요" },
+];
 
 const LIVE_TEXT: Record<LiveStatus, string> = {
   off: "",
@@ -26,7 +37,7 @@ const LIVE_TEXT: Record<LiveStatus, string> = {
   error: "연결할 수 없어요",
 };
 
-export function Toolbar({ watch, followHours, onFollowHours, wakeExtended, onWakeExtended, scale, onScale, preview, onPreview, status }: Props) {
+export function Toolbar({ watch, followHours, onFollowHours, wakeExtended, onWakeExtended, layout, onLayout, scale, onScale, preview, onPreview, status, quotes, moods }: Props) {
   const [panel, setPanel] = useState<"none" | "list" | "settings">("none");
 
   return (
@@ -46,9 +57,23 @@ export function Toolbar({ watch, followHours, onFollowHours, wakeExtended, onWak
         onClick={() => setPanel(panel === "settings" ? "none" : "settings")}
       >⚙</button>
 
-      {panel === "list" && <WatchlistPanel watch={watch} />}
+      {panel === "list" && <WatchlistPanel watch={watch} quotes={quotes} moods={moods} />}
       {panel === "settings" && (
         <div className="panel">
+          <div className="layouts" role="group" aria-label="레이아웃">
+            {LAYOUTS.map((l) => (
+              <button
+                key={l.value}
+                type="button"
+                className={l.value === layout ? "on" : ""}
+                aria-pressed={l.value === layout}
+                onClick={() => { onLayout(l.value); setPanel("none"); }} // close settings so the 출근 / 퇴근 can be watched
+              >
+                <b>{l.label}</b>
+                <span>{l.hint}</span>
+              </button>
+            ))}
+          </div>
           <div className="sizes" role="group" aria-label="크기">
             <span>크기</span>
             {SCALES.map((s) => (

@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { headTop, tickySvg, type Face } from "../ticky/art";
 import { moodName, moodTone, pickFrom, REACT_LINES, type MoodKey, type Tone } from "../ticky/moods";
 import type { TickyEvent } from "../roam";
-import { formatPrice, isKrx, type Quote, type Session, type WatchItem } from "../market/types";
-import { Sparkline } from "./Sparkline";
+import type { Quote, Session, WatchItem } from "../market/types";
+import { QuoteCard } from "./QuoteCard";
 
 interface Props {
   item: WatchItem;
@@ -12,33 +12,15 @@ interface Props {
   line: string;   // said right away whenever it changes (new mood, alarm reason, chart flow)
   pool: string[]; // what it says after that, now and then
   hint?: string[]; // situational lines (chart flow) that come up more often than the pool
-  onRemove?: () => void; // hide from the screen (stays in the list)
   onDelete?: () => void; // remove from the list
   /** fixed x position (preview lineup): the roaming engine leaves pinned Tickies alone */
   pinX?: number;
+  /** 출근 / 퇴근 while the layout switches (roam.ts walks it in or out) */
+  commute?: "in" | "out";
 }
 
-// a live price older than this is the last trade before a quiet stretch (night, weekend)
-const STALE_MS = 15 * 60 * 1000;
-
-const SESSION_NAME: Record<Session, string> = {
-  pre: "프리마켓", regular: "정규장", post: "애프터마켓", closed: "장 마감",
-};
 // short badge next to the % on the name tag, only outside regular hours
 const SESSION_BADGE: Partial<Record<Session, string>> = { pre: "장전", post: "장후" };
-
-/** Two short lines: where the price is from, and how fresh it is. */
-function sourceText(q: Quote): [string, string] {
-  if (q.source === "fake") return ["가짜 시세", ""];
-  const krx = isKrx(q.symbol);
-  const head = `${krx ? "네이버" : "Yahoo"} · ${q.session ? SESSION_NAME[q.session] : ""}`;
-  if (q.quotedAt && Date.now() - q.quotedAt > STALE_MS) {
-    const d = new Date(q.quotedAt);
-    const hm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-    return [head, `${d.getMonth() + 1}/${d.getDate()} ${hm} 기준`];
-  }
-  return [head, `${krx ? "7초" : "15초"}마다 갱신`];
-}
 
 const signed = (n: number, digits = 2) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(n).toFixed(digits)}`;
 const rand = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
@@ -81,6 +63,8 @@ function reaction(e: TickyEvent, mood: MoodKey, tone: Tone, angry: boolean): { t
       return tone === "up" ? say(R.poke.up, "happy")     // 히히 간지러워
         : tone === "down" ? say(R.poke.down, "sulk")     // 건드리지 마...
         : say(R.poke.flat, "wince");                     // 응? 왜?
+    case "leave": return e.talk ? say(R.leave, "relief") : { text: null, face: "relief" };
+    case "arrive": return e.talk ? say(R.arrive, "happy") : { text: null, face: "relief" };
     case "meet": {
       if (mood === "sleep" || mood === "offline") return { text: null };
       const theirs = moodTone(e.other, 0);
@@ -141,7 +125,7 @@ function useChatter(moodLine: string, pool: string[], hint: string[] | undefined
   return { said: hushed && !said?.react ? null : said, interrupt: (text: string) => interruptRef.current(text) };
 }
 
-export function Pet({ item, quote, mood, line, pool, hint, onRemove, onDelete, pinX }: Props) {
+export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commute }: Props) {
   const [hover, setHover] = useState(false);
   const [menu, setMenu] = useState<null | "open" | "confirm">(null);
   const [stay, setStay] = useState(false);     // 가만히 있기: doesn't wander (can still be carried)
@@ -207,9 +191,15 @@ export function Pet({ item, quote, mood, line, pool, hint, onRemove, onDelete, p
     const close = (e: Event) => {
       if (e instanceof KeyboardEvent ? e.key === "Escape" : !(e.target as Element).closest?.(".menu")) setMenu(null);
     };
+    const lostFocus = () => setMenu(null); // clicked out on the desktop or another app
     window.addEventListener("pointerdown", close);
     window.addEventListener("keydown", close);
-    return () => { window.removeEventListener("pointerdown", close); window.removeEventListener("keydown", close); };
+    window.addEventListener("blur", lostFocus);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", close);
+      window.removeEventListener("blur", lostFocus);
+    };
   }, [menu]);
   const showCard = hover && !!quote && !menu && !said?.react;
 
@@ -231,6 +221,7 @@ export function Pet({ item, quote, mood, line, pool, hint, onRemove, onDelete, p
       data-symbol={item.symbol}
       data-pinned={pinX !== undefined ? "1" : undefined}
       data-stay={stay ? "1" : undefined}
+      data-commute={commute}
       data-angry={angry ? "1" : undefined}
       data-poke={poke}
       onContextMenu={(e) => { e.preventDefault(); setMenu("open"); }}
@@ -244,11 +235,6 @@ export function Pet({ item, quote, mood, line, pool, hint, onRemove, onDelete, p
           <button type="button" role="menuitem" onClick={() => { setStay((s) => !s); setMenu(null); }}>
             {stay ? "다시 돌아다니기" : "가만히 있기"}
           </button>
-          {onRemove && (
-            <button type="button" role="menuitem" onClick={() => { setMenu(null); onRemove(); }}>
-              화면에서 내리기
-            </button>
-          )}
           {onDelete && (
             <button
               type="button"
@@ -261,30 +247,12 @@ export function Pet({ item, quote, mood, line, pool, hint, onRemove, onDelete, p
           )}
         </div>
       )}
-      {showCard && quote && (
-        <div className="card">
-          <div className="card-top">
-            <span className="card-name">{name}</span>
-            <span className="card-mood">{moodName(mood)}</span>
-          </div>
-          <div className="card-price">{formatPrice(item.symbol, quote.price)}</div>
-          <div className={`card-change ${tone}`}>
-            {signed(quote.price - quote.prevClose, quote.prevClose > 1000 ? 0 : 2)} ({signed(pct)}%)
-          </div>
-          <Sparkline values={quote.history} base={quote.prevClose} tone={tone} />
-          {sourceText(quote).filter(Boolean).map((l) => (
-            <div key={l} className="card-source">{l}</div>
-          ))}
-        </div>
-      )}
+      {showCard && quote && <QuoteCard name={name} moodLabel={moodName(mood)} quote={quote} tone={tone} />}
       {/* the speech bubble pops up right above the head now and then */}
       <div className="above">
         {said && <div key={said.id} className="bubble">{said.text}</div>}
       </div>
       <div className="art" dangerouslySetInnerHTML={{ __html: svg }} />
-      {menu && onRemove && (
-        <button className="remove" type="button" onClick={onRemove} title="화면에서 내리기 (목록에는 남아요)" aria-label={`${name} 화면에서 내리기`}>×</button>
-      )}
       </div>
       {/* the name tag sits right under the feet, like the ground the Ticky stands on */}
       {tag}

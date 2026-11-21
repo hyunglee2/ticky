@@ -5,7 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 export const inTauri = () => "__TAURI_INTERNALS__" in window;
 
-const SELECTOR = ".pet, .card, .menu, .toolbar, .panel, .onboard";
+const SELECTOR = ".pet, .card, .menu, .ticker, .ticker-row, .toolbar, .panel, .onboard";
 const PAD = 4; // a little slack around each part so the edge isn't fiddly
 
 export function useClickThroughRegions() {
@@ -14,7 +14,7 @@ export function useClickThroughRegions() {
     let last = "";
     const send = () => {
       // while a Ticky is carried or flying, the whole window catches the mouse so the drag never drops
-      const grabbing = document.querySelector('.pet[data-held="1"], .pet[data-air="1"]');
+      const grabbing = document.querySelector('.pet[data-held="1"], .pet[data-air="1"], .ticker[data-dragging]');
       const rects = grabbing
         ? [[0, 0, window.innerWidth, window.innerHeight]]
         : [...document.querySelectorAll(SELECTOR)].map((el) => {

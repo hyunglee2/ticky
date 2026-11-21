@@ -3,6 +3,7 @@ import { Pet } from "./components/Pet";
 import { Toolbar } from "./components/Toolbar";
 import { Onboarding } from "./components/Onboarding";
 import { StatePreview } from "./components/StatePreview";
+import { TickerStack } from "./components/TickerStack";
 import { createHybridFeed } from "./market/hybridFeed";
 import { isMarketOpen } from "./market/hours";
 import { isKrx, type FeedStatus, type Quote } from "./market/types";
@@ -19,8 +20,7 @@ const SHOCK_PCT = 2, SHOCK_MS = 3000;
 // 비상: siren + megaphone for 8 s, on any of
 //   - a move of 3% or more within ~5 minutes (not again for 5 minutes)
 //   - first crossing of ±10% for the day (entering 폭등 / 폭락)
-//   - reaching the stock's target or stop price (once; re-arms after moving 0.5% back)
-const ALARM_PCT = 3, ALARM_MS = 8000, JUMP_ALARM_GAP = 5 * 60_000, REARM = 0.005;
+const ALARM_PCT = 3, ALARM_MS = 8000, JUMP_ALARM_GAP = 5 * 60_000;
 
 /** how many history points cover ~5 minutes: live KRX every 7 s, live US every 15 s, fake every 1.5 s */
 const fiveMinTicks = (q: Quote) => (q.source === "live" ? (isKrx(q.symbol) ? 43 : 20) : 20);
@@ -50,18 +50,50 @@ interface PetState {
   trend: Trend | null; // chart flow over the last ~10 minutes, for situational lines
   trendAt: number;     // when a chart-flow line last spoke up on its own
   jumpAlarmAt: number; // when the last 급변 alarm fired
-  targetHit: boolean;  // already alarmed for the target / stop price (until it re-arms)
-  stopHit: boolean;
 }
 
 const sameState = (a: PetState | undefined, b: PetState) =>
   !!a && a.band === b.band && a.mood === b.mood && a.line === b.line && a.shockUntil === b.shockUntil &&
-  a.alarmUntil === b.alarmUntil && a.targetHit === b.targetHit && a.stopHit === b.stopHit &&
+  a.alarmUntil === b.alarmUntil &&
   a.alarmReason === b.alarmReason && a.trend === b.trend && a.trendAt === b.trendAt;
+
+export type Layout = "roam" | "prices";
 
 export default function App() {
   const watch = useWatchlist();
   const [followHours, setFollowHours] = useState<boolean>(() => load("ticky.followHours", false));
+  // 레이아웃: Tickies roam the bottom of the screen (출근), or go home and leave just the prices (퇴근)
+  const [layout, setLayout] = useState<Layout>(() => load("ticky.layout", "roam"));
+  useEffect(() => save("ticky.layout", layout), [layout]);
+  // what's on screen lags the setting while the Tickies walk out (퇴근) or in (출근)
+  const [onScreen, setOnScreen] = useState<Layout>(layout);
+  const [commute, setCommute] = useState<"in" | "out" | null>(null);
+  const switchLayout = (next: Layout) => {
+    if (next === layout) return;
+    setLayout(next);
+    if (preview || shown.length === 0) { // nobody on screen to walk: switch at once
+      setOnScreen(next);
+      setCommute(null);
+      return;
+    }
+    if (next === "prices") {
+      setCommute("out"); // they bow and walk off one by one; the price rows come once all are gone
+    } else {
+      setOnScreen("roam");
+      setCommute("in"); // the price rows go and the Tickies walk in one by one
+    }
+  };
+  // roam.ts says when everyone has gone (or arrived); a fallback in case it never does
+  useEffect(() => {
+    if (!commute) return;
+    const finish = () => {
+      if (commute === "out") setOnScreen("prices");
+      setCommute(null);
+    };
+    window.addEventListener("ticky:commute-done", finish);
+    const fallback = window.setTimeout(finish, 20_000);
+    return () => { window.removeEventListener("ticky:commute-done", finish); window.clearTimeout(fallback); };
+  }, [commute]);
   // US pre-market and after-hours: awake (default) or asleep like the overnight close
   const [wakeExtended, setWakeExtended] = useState<boolean>(() => load("ticky.wakeExtended", true));
   const [quotes, setQuotes] = useState<Record<string, Quote>>({});
@@ -102,7 +134,6 @@ export default function App() {
   // derive each Ticky's mood from its quote; pick a new line only when the mood changes
   useEffect(() => {
     const now = Date.now();
-    const entries = Object.fromEntries(watch.entries.map((e) => [e.symbol, e]));
     const next: Record<string, PetState> = {};
     let changed = false;
     for (const { symbol } of shown) {
@@ -116,13 +147,12 @@ export default function App() {
         next[symbol] = {
           band: old?.band ?? "calm", mood: "offline", line, shockUntil: 0, alarmUntil: 0,
           trend: null, trendAt: old?.trendAt ?? 0,
-          jumpAlarmAt: old?.jumpAlarmAt ?? 0, targetHit: old?.targetHit ?? false, stopHit: old?.stopHit ?? false,
+          jumpAlarmAt: old?.jumpAlarmAt ?? 0,
         };
         if (!sameState(old, next[symbol])) changed = true;
         continue;
       }
       if (!q) continue;
-      const entry = entries[symbol];
       const band = bandMood(q.changePct, old?.band);
 
       // movement over the last ~5 minutes
@@ -144,19 +174,6 @@ export default function App() {
         fire(move > 0 ? "jumpUp" : "jumpDown");
       }
       if (old && old.band !== band && (band === "boom" || band === "blast")) fire(band);
-      let targetHit = old?.targetHit ?? false;
-      if (!entry?.target) targetHit = false;
-      else if (!targetHit && q.price >= entry.target) {
-        targetHit = true;
-        fire("target");
-      } else if (targetHit && q.price < entry.target * (1 - REARM)) targetHit = false;
-      let stopHit = old?.stopHit ?? false;
-      if (!entry?.stop) stopHit = false;
-      else if (!stopHit && q.price <= entry.stop) {
-        stopHit = true;
-        fire("stop");
-      } else if (stopHit && q.price > entry.stop * (1 + REARM)) stopHit = false;
-
       // live quotes know their session (pre-market and after-hours count as awake);
       // fake ones fall back to the exchange's regular hours
       const closed = q.session
@@ -183,7 +200,7 @@ export default function App() {
         trendAt = now;
       } else line = old.line;
       next[symbol] = {
-        band, mood, line, shockUntil, alarmUntil, alarmReason, trend, trendAt, jumpAlarmAt, targetHit, stopHit,
+        band, mood, line, shockUntil, alarmUntil, alarmReason, trend, trendAt, jumpAlarmAt,
       };
       if (!sameState(old, next[symbol])) changed = true;
     }
@@ -209,15 +226,31 @@ export default function App() {
             onFollowHours={setFollowHours}
             wakeExtended={wakeExtended}
             onWakeExtended={setWakeExtended}
+            layout={layout}
+            onLayout={switchLayout}
             scale={scale}
             onScale={setScale}
             preview={preview}
             onPreview={setPreview}
             status={status}
+            quotes={quotes}
+            moods={moods}
           />
           <div className="pets">
             {preview && <StatePreview />}
-            {!preview && shown.map((item) => {
+            {!preview && onScreen === "prices" && shown.length > 0 && (
+              <TickerStack
+                items={shown}
+                quotes={quotes}
+                moods={moods}
+                onMove={(from, to) => watch.move(
+                  watch.entries.findIndex((e) => e.symbol === from),
+                  watch.entries.findIndex((e) => e.symbol === to),
+                )}
+                onDelete={(symbol) => watch.remove(symbol)}
+              />
+            )}
+            {!preview && onScreen === "roam" && shown.map((item) => {
               const p = pets[item.symbol];
               return p ? (
                 <Pet
@@ -228,8 +261,8 @@ export default function App() {
                   line={p.line}
                   pool={p.mood === "alarm" && p.alarmReason ? [ALARM_LINES[p.alarmReason][1]] : moodLines(p.mood)}
                   hint={p.trend ? TREND_LINES[p.trend] : undefined}
-                  onRemove={() => watch.setShown(item.symbol, false)}
                   onDelete={() => watch.remove(item.symbol)}
+                  commute={commute ?? undefined}
                 />
               ) : null;
             })}

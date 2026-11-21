@@ -1,19 +1,13 @@
 // Watchlist rules (see "관심 종목 규칙" in the planning doc):
-//   - the list holds up to 20 stocks; up to 5 of them are shown as Tickies
+//   - every stock on the list is on screen (as a Ticky or a price row); up to 5
 //   - first run starts from 3 representative stocks of the chosen market
-//   - × on a Ticky only hides it; deleting from the list removes it
+//   - add from the search box, delete from the list / a Ticky's menu / swiping a price row
 import { useCallback, useEffect, useState } from "react";
 import type { WatchItem } from "./market/types";
 
-export const MAX_LIST = 20;
-export const MAX_SHOWN = 5;
+export const MAX_LIST = 5;
 
-export interface WatchEntry extends WatchItem {
-  shown: boolean;
-  /** 비상 when the price reaches these (in the stock's own currency) */
-  target?: number;
-  stop?: number;
-}
+export type WatchEntry = WatchItem;
 
 export type StarterMarket = "kr" | "us" | "both";
 
@@ -42,12 +36,14 @@ const OLD_KEY = "ticky.watchlist"; // v1: a plain array of items, all shown
 function read(): WatchEntry[] | null {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return JSON.parse(raw) as WatchEntry[];
-    const old = localStorage.getItem(OLD_KEY);
-    if (old) {
-      const items = (JSON.parse(old) as WatchItem[]).slice(0, MAX_LIST);
-      return items.map((it, i) => ({ symbol: it.symbol, name: it.name, shown: i < MAX_SHOWN }));
+    if (raw) {
+      // older lists could hold 20 with only some shown: keep the shown ones first, up to the limit
+      const saved = JSON.parse(raw) as (WatchEntry & { shown?: boolean })[];
+      const ordered = [...saved.filter((e) => e.shown !== false), ...saved.filter((e) => e.shown === false)];
+      return ordered.slice(0, MAX_LIST).map((e) => ({ symbol: e.symbol, name: e.name }));
     }
+    const old = localStorage.getItem(OLD_KEY);
+    if (old) return (JSON.parse(old) as WatchItem[]).slice(0, MAX_LIST).map((it) => ({ symbol: it.symbol, name: it.name }));
   } catch { /* fall through to onboarding */ }
   return null;
 }
@@ -55,7 +51,7 @@ function write(entries: WatchEntry[]) {
   try { localStorage.setItem(KEY, JSON.stringify(entries)); } catch { /* ignore */ }
 }
 
-export type AddResult = "shown" | "listed" | "duplicate" | "full";
+export type AddResult = "added" | "duplicate" | "full";
 
 export function useWatchlist() {
   // null = never set up yet → show the first-run market picker
@@ -64,34 +60,20 @@ export function useWatchlist() {
   useEffect(() => { if (entries) write(entries); }, [entries]);
 
   const list = entries ?? [];
-  const shownCount = list.filter((e) => e.shown).length;
 
   const start = useCallback((market: StarterMarket) => {
-    setEntries(STARTERS[market].map((it) => ({ ...it, shown: true })));
+    setEntries(STARTERS[market].map((it) => ({ ...it })));
   }, []);
 
   const add = useCallback((item: WatchItem): AddResult => {
     if (list.some((e) => e.symbol === item.symbol)) return "duplicate";
     if (list.length >= MAX_LIST) return "full";
-    const shown = shownCount < MAX_SHOWN;
-    setEntries([...list, { ...item, shown }]);
-    return shown ? "shown" : "listed";
-  }, [list, shownCount]);
+    setEntries([...list, { ...item }]);
+    return "added";
+  }, [list]);
 
   const remove = useCallback((symbol: string) => {
     setEntries(list.filter((e) => e.symbol !== symbol));
-  }, [list]);
-
-  /** Show or hide on screen. Returns false when showing would go past MAX_SHOWN. */
-  const setShown = useCallback((symbol: string, shown: boolean): boolean => {
-    if (shown && shownCount >= MAX_SHOWN) return false;
-    setEntries(list.map((e) => (e.symbol === symbol ? { ...e, shown } : e)));
-    return true;
-  }, [list, shownCount]);
-
-  /** Set or clear (undefined) the target / stop prices for one stock. */
-  const setAlerts = useCallback((symbol: string, target?: number, stop?: number) => {
-    setEntries(list.map((e) => (e.symbol === symbol ? { ...e, target, stop } : e)));
   }, [list]);
 
   const move = useCallback((from: number, to: number) => {
@@ -105,13 +87,10 @@ export function useWatchlist() {
   return {
     ready: entries !== null,
     entries: list,
-    shown: list.filter((e) => e.shown),
-    shownCount,
+    shown: list, // everything on the list is on screen
     start,
     add,
     remove,
-    setShown,
-    setAlerts,
     move,
   };
 }
