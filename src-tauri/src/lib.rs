@@ -7,7 +7,7 @@ use std::{sync::Mutex, thread, time::Duration};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    AppHandle, Manager, PhysicalPosition, PhysicalSize,
+    AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, WindowEvent,
 };
 
 /// Areas of the window (in logical px, `[left, top, width, height]`) that should catch the mouse:
@@ -178,6 +178,52 @@ async fn open_settings(app: AppHandle) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+/// 괴롭히기: a transparent window over the whole screen (work area) the Tickies are on, where
+/// one Ticky shows up big in the middle. Replaces any one already open. When it's gone,
+/// "ticky:tease-closed" tells the Tickies' window to bring that Ticky back.
+#[tauri::command]
+async fn open_tease(app: AppHandle, symbol: String) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("tease") {
+        let _ = w.destroy();
+    }
+    let main = app.get_webview_window("main").ok_or("no main window")?;
+    let monitor = main.current_monitor().ok().flatten()
+        .or(main.primary_monitor().ok().flatten())
+        .ok_or("no monitor")?;
+    let work = monitor.work_area();
+    let scale = monitor.scale_factor();
+    // symbols are plain tickers / codes; keep it that way in the URL
+    let symbol: String = symbol.chars().filter(|c| c.is_ascii_alphanumeric() || ".-^=".contains(*c)).collect();
+    let url = format!("index.html?view=tease&s={symbol}");
+    let w = tauri::WebviewWindowBuilder::new(&app, "tease", tauri::WebviewUrl::App(url.into()))
+        .title("ticky")
+        .transparent(true)
+        .decorations(false)
+        .shadow(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .resizable(false)
+        .inner_size(work.size.width as f64 / scale, work.size.height as f64 / scale)
+        .position(work.position.x as f64 / scale, work.position.y as f64 / scale)
+        .focused(true)
+        .build()
+        .map_err(|e| e.to_string())?;
+    let handle = app.clone();
+    w.on_window_event(move |e| {
+        if let WindowEvent::Destroyed = e {
+            let _ = handle.emit("ticky:tease-closed", ());
+        }
+    });
+    Ok(())
+}
+
+#[tauri::command]
+fn close_tease(app: AppHandle) {
+    if let Some(w) = app.get_webview_window("tease") {
+        let _ = w.destroy();
+    }
+}
+
 /// Called by the UI whenever what's on screen needs a different height (cards, panels, size setting).
 #[tauri::command]
 fn dock_bottom(app: AppHandle, height: f64) {
@@ -194,6 +240,8 @@ pub fn run() {
             text_scale,
             dock_bottom,
             open_settings,
+            open_tease,
+            close_tease,
             yahoo::fetch_yahoo_quotes,
             kis::fetch_kis_quotes,
             kis::kis_status,

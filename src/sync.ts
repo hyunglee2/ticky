@@ -33,6 +33,8 @@ export const EV = {
   set: "ticky:set",
   watchlist: "ticky:watchlist",
   hello: "ticky:hello",
+  teaseDone: "ticky:tease-done",     // tease → main: { symbol, hits } just before it closes
+  teaseClosed: "ticky:tease-closed", // Rust → main: the tease window is gone
 } as const;
 
 /** Send to every window (no-op in the browser preview). */

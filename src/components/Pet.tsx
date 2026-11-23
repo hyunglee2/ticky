@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { headTop, tickySvg, type Face } from "../ticky/art";
-import { moodName, moodTone, pickFrom, REACT_LINES, type MoodKey, type Tone } from "../ticky/moods";
+import { moodName, moodTone, pickFrom, REACT_LINES, TEASE_LINES, type MoodKey, type Tone } from "../ticky/moods";
 import type { TickyEvent } from "../roam";
 import { displayName, fullName, type Quote, type Session, type WatchItem } from "../market/types";
 import { QuoteCard } from "./QuoteCard";
@@ -17,6 +17,12 @@ interface Props {
   pinX?: number;
   /** 출근 / 퇴근 while the layout switches (roam.ts walks it in or out) */
   commute?: "in" | "out";
+  /** 괴롭히기: open it big in the middle of the screen */
+  onTease?: () => void;
+  /** off being teased right now (hidden here) */
+  away?: boolean;
+  /** was teased a while ago: wears a plaster */
+  bandage?: boolean;
 }
 
 // short badge next to the % on the name tag, only outside regular hours
@@ -125,7 +131,7 @@ function useChatter(moodLine: string, pool: string[], hint: string[] | undefined
   return { said: hushed && !said?.react ? null : said, interrupt: (text: string) => interruptRef.current(text) };
 }
 
-export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commute }: Props) {
+export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commute, onTease, away, bandage }: Props) {
   const [hover, setHover] = useState(false);
   const [menu, setMenu] = useState<null | "open" | "confirm">(null);
   const [stay, setStay] = useState(false);     // 가만히 있기: doesn't wander (can still be carried)
@@ -139,8 +145,16 @@ export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commu
   const name = displayName(item, quote);
   const tone = moodTone(mood, pct);
   // markup only changes with the mood, so animations aren't restarted on every price tick
-  const svg = useMemo(() => tickySvg(mood, tone, `${name} ${moodName(mood)}`, face), [mood, tone, name, face]);
+  const svg = useMemo(() => tickySvg(mood, tone, `${name} ${moodName(mood)}`, face, undefined, bandage), [mood, tone, name, face, bandage]);
   const { said, interrupt } = useChatter(line, pool, hint, mood === "alarm", hover || menu !== null);
+
+  // back from being teased: says something about it
+  const wasAway = useRef(false);
+  useEffect(() => {
+    if (wasAway.current && !away && bandage) interrupt(pickFrom(TEASE_LINES.back));
+    wasAway.current = !!away;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [away]);
 
   // reactions to being handled (events come from roam.ts)
   const react = useRef({ mood, tone, angry, interrupt });
@@ -225,6 +239,7 @@ export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commu
       data-commute={commute}
       data-angry={angry ? "1" : undefined}
       data-poke={poke}
+      data-away={away ? "1" : undefined}
       onContextMenu={(e) => { e.preventDefault(); setMenu("open"); }}
       style={pinX !== undefined ? { transform: `translateX(${pinX}px)` } : undefined}
       onMouseEnter={() => setHover(true)}
@@ -236,6 +251,9 @@ export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commu
           <button type="button" role="menuitem" onClick={() => { setStay((s) => !s); setMenu(null); }}>
             {stay ? "다시 돌아다니기" : "가만히 있기"}
           </button>
+          {onTease && mood !== "offline" && (
+            <button type="button" role="menuitem" onClick={() => { setMenu(null); onTease(); }}>괴롭히기</button>
+          )}
           {onDelete && (
             <button
               type="button"

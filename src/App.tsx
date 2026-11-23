@@ -14,12 +14,15 @@ import { useRoaming } from "./roam";
 import { invoke } from "@tauri-apps/api/core";
 import { EV, on, send, type Layout, type SetMessage, type Snapshot } from "./sync";
 import { Settings, type Bridge } from "./components/Settings";
+import { Tease } from "./components/Tease";
 import { inTauri, useClickThroughRegions } from "./clickThrough";
 import { useWatchlist } from "./watchlist";
 import "./App.css";
 
 // 놀람: a move of 2% or more within the last ~5 minutes, shown for 3 s
 const SHOCK_PCT = 2, SHOCK_MS = 3000;
+// a teased Ticky wears its plaster this long
+const PLASTER_MS = 10 * 60_000;
 // 비상: siren + megaphone for 8 s, on any of
 //   - a move of 3% or more within ~5 minutes (not again for 5 minutes)
 //   - first crossing of ±10% for the day (entering 폭등 / 폭락)
@@ -257,12 +260,45 @@ export default function App() {
   };
   const bridge: Bridge = { snapshot, set: apply };
 
+  // ---- 괴롭히기 ------------------------------------------------------------------------------
+  // the Ticky goes off to a window of its own in the middle of the screen; meanwhile it's hidden
+  // here. Teased at all → it comes back wearing a plaster for a while.
+  const [teasing, setTeasing] = useState<string | null>(null);
+  const [plasters, setPlasters] = useState<Record<string, number>>({});
+  const teasingRef = useRef(teasing);
+  teasingRef.current = teasing;
+  const teaseDone = (symbol: string, hits: number) => {
+    if (hits > 0) setPlasters((p) => ({ ...p, [symbol]: Date.now() + PLASTER_MS }));
+    setTeasing(null);
+  };
+  useEffect(() => {
+    const offDone = on<{ symbol: string; hits: number }>(EV.teaseDone, (m) => teaseDone(m.symbol, m.hits));
+    const offClosed = on(EV.teaseClosed, () => setTeasing(null)); // closed some other way
+    return () => { offDone(); offClosed(); };
+  }, []);
+  // plasters come off after a while
+  useEffect(() => {
+    const ids = Object.entries(plasters).map(([s, until]) => window.setTimeout(() => {
+      setPlasters((p) => { const n = { ...p }; delete n[s]; return n; });
+    }, Math.max(0, until - Date.now())));
+    return () => ids.forEach((id) => window.clearTimeout(id));
+  }, [plasters]);
+  const tease = (symbol: string) => {
+    setTeasing(symbol);
+    if (inTauri()) invoke("open_tease", { symbol }).catch(() => setTeasing(null));
+  };
+
   return (
     <main className="desk">
       {!watch.ready && <Onboarding onPick={watch.start} />}
       {watch.ready && (
         <>
           <Toolbar layout={layout} onLayout={switchLayout} onSettings={openSettings} />
+          {teasing && !inTauri() && (
+            <div className="tease-inline">
+              <Tease symbol={teasing} bridge={snapshot} onDone={(hits) => teaseDone(teasing, hits)} />
+            </div>
+          )}
           {inlineSettings && (
             <div className="settings-inline"><Settings bridge={bridge} onClose={() => setInlineSettings(false)} /></div>
           )}
@@ -293,6 +329,9 @@ export default function App() {
                   hint={p.trend ? TREND_LINES[p.trend] : undefined}
                   onDelete={() => watch.remove(item.symbol)}
                   commute={commute ?? undefined}
+                  onTease={() => tease(item.symbol)}
+                  away={teasing === item.symbol}
+                  bandage={item.symbol in plasters}
                 />
               ) : null;
             })}

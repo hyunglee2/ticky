@@ -17,7 +17,8 @@ type WickKind = "perky" | "calm" | "droop" | "frizz" | "none";
 type Anim = "hop" | "bob" | "idle" | "sway" | "melt" | "shake";
 
 /** A short-lived face for being handled; replaces the mood's eyes, mouth and props for a moment. */
-export type Face = "grab" | "fly" | "flyJoy" | "flyPanic" | "dizzy" | "wince" | "sulk" | "angry" | "happy" | "relief" | "shy";
+export type Face = "grab" | "fly" | "flyJoy" | "flyPanic" | "dizzy" | "wince" | "sulk" | "angry" | "happy" | "relief" | "shy"
+  | "ouch" | "beg" | "smug" | "stretch";
 
 const FACES: Record<Face, { eye: EyeKind; mouth: MouthKind; wick?: WickKind }> = {
   grab:   { eye: "wide",    mouth: "open",   wick: "perky" }, // picked up: startled, sweating
@@ -33,6 +34,11 @@ const FACES: Record<Face, { eye: EyeKind; mouth: MouthKind; wick?: WickKind }> =
   happy:  { eye: "up",      mouth: "laugh",  wick: "perky" }, // had fun / met a friend: big open laugh
   relief: { eye: "look",    mouth: "smile" },                 // soft landing
   shy:    { eye: "bashful", mouth: "fluster" },               // embarrassed: wide eyes darting away, wobbly little mouth, pink cheeks
+  // 괴롭히기
+  ouch:    { eye: "wide",  mouth: "grit",   wick: "frizz" }, // bonked: tiny pupils, teeth clenched
+  beg:     { eye: "heavy", mouth: "wobble", wick: "droop" }, // crying, begging: heavy lids, tears
+  smug:    { eye: "smug",  mouth: "smirk",  wick: "perky" }, // an up day: "what did I do?"
+  stretch: { eye: "wide",  mouth: "scream", wick: "frizz" }, // being pulled
 };
 
 interface Look {
@@ -263,12 +269,25 @@ function faceExtras(face: Face, top: number) {
       return `<ellipse cx="40" cy="${top + 40}" rx="5.5" ry="3.2" fill="#ff8fa6" opacity=".7"/>` +
         `<ellipse cx="80" cy="${top + 40}" rx="5.5" ry="3.2" fill="#ff8fa6" opacity=".7"/>` +
         `<path d="M94 ${top + 8} q-3.5 7 0 10 q3.5 -3 0 -10z" fill="${TEAR}" stroke="${INK}" stroke-width="1.3"/>`;
+    case "ouch": // a bump on the head
+      return `<path d="M48 ${top - 2} l-5 -6 M60 ${top - 5} v-7 M72 ${top - 2} l5 -6" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/>`;
+    case "beg": // tears running down both cheeks
+      return `<path class="tears" d="M48 ${top + 37} q-3 8 0 13 q3 -4 0 -13z M72 ${top + 37} q-3 8 0 13 q3 -4 0 -13z" fill="${TEAR}"/>`;
+    case "stretch":
+      return `<path d="M94 ${top + 6} q-4 8 0 11 q4 -3 0 -11z" fill="${TEAR}" stroke="${INK}" stroke-width="1.4"/>`;
     case "happy": // little sparkles
       return `<g class="heart">${sparkle(98, top + 6, 2.2)}</g><g class="heart h2">${sparkle(20, top + 18, 1.6)}</g>`;
     default:
       return "";
   }
 }
+
+/** a little crossed plaster on the head, after being teased */
+const BANDAGE = (x: number, y: number) =>
+  `<g transform="translate(${x} ${y})">` +
+  [-35, 35].map((r) => `<g transform="rotate(${r})"><rect x="-11" y="-4" width="22" height="8" rx="4" fill="#f6d7b0" stroke="${INK}" stroke-width="1.3"/>` +
+    `<rect x="-3.5" y="-3" width="7" height="6" rx="1.5" fill="#e8b98a"/></g>`).join("") +
+  `</g>`;
 
 const TEAR_AT = (x: number, y: number) => `<path d="M${x} ${y} q-2.5 6 0 9 q2.5 -3 0 -9z" fill="${TEAR}"/>`;
 
@@ -328,7 +347,7 @@ export function headTop(mood: MoodKey): number {
  * Full SVG markup for one Ticky. Pass `filterId` to apply the hand-drawn boil wobble;
  * it is off by default because WebView2 rasterises SVG filters at 1x, which makes edges jagged.
  */
-export function tickySvg(mood: MoodKey, tone: Tone, label: string, face?: Face, filterId?: string) {
+export function tickySvg(mood: MoodKey, tone: Tone, label: string, face?: Face, filterId?: string, bandage = false) {
   const f = face ? FACES[face] : undefined;
   const base = LOOKS[mood];
   const look = f ? { ...base, eye: f.eye, mouth: f.mouth, wick: f.wick ?? base.wick } : base;
@@ -342,5 +361,6 @@ export function tickySvg(mood: MoodKey, tone: Tone, label: string, face?: Face, 
     `<g class="upper">` +
     (wide ? "" : `<g class="wick">${wick(60, b.top, look.wick)}</g>`) +
     b.art + (face ? faceExtras(face, b.top) : extras(mood, b.top, look.h)) +
+    (bandage ? BANDAGE(wide ? 74 : 80, b.top + (wide ? 6 : 9)) : "") +
     `</g></g></g></svg>`;
 }
