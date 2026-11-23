@@ -10,6 +10,9 @@ import { isUsDayMarket } from "./hours";
 import { isKrx, type FeedStatus, type LiveStatus, type Quote, type QuoteProvider, type Session } from "./types";
 
 const HISTORY = 160;
+// no new trade for this long, then trading again = the market (re)opened: start a new stretch
+const QUIET_GAP_MS = 5 * 60_000;
+const RECENT = 60;
 
 /** What both Rust commands return per symbol. */
 interface RawQuote {
@@ -41,6 +44,8 @@ const statusFor = (error: unknown): LiveStatus => (String(error) === "rate-limit
 export function createHybridFeed(liveEnabled: boolean): QuoteProvider {
   const fake = createFakeFeed();
   const history = new Map<string, number[]>(); // polled prices per live symbol since launch
+  // prices since trading last resumed, with the trade time and session they came with
+  const stretch = new Map<string, { prices: number[]; at?: number; session?: string }>();
 
   return {
     subscribe(items, onQuote, onStatus) {
@@ -69,14 +74,27 @@ export function createHybridFeed(liveEnabled: boolean): QuoteProvider {
         h.push(q.price);
         if (h.length > HISTORY) h.shift();
         history.set(q.symbol, h);
+        const quotedAt = q.time ? q.time * 1000 : q.tradedAt ? Date.parse(q.tradedAt) : undefined;
+        let st = stretch.get(q.symbol);
+        const resumed = st && (
+          st.session !== q.session ||
+          (quotedAt !== undefined && st.at !== undefined && quotedAt - st.at > QUIET_GAP_MS)
+        );
+        if (!st || resumed) st = { prices: [] };
+        st.prices.push(q.price);
+        if (st.prices.length > RECENT) st.prices.shift();
+        st.at = quotedAt ?? st.at;
+        st.session = q.session;
+        stretch.set(q.symbol, st);
         const quote: Quote = {
           symbol: q.symbol,
           price: q.price,
           prevClose: q.prevClose,
           changePct: (q.price / q.prevClose - 1) * 100,
           history: [...h],
+          recent: [...st.prices],
           updatedAt: Date.now(),
-          quotedAt: q.time ? q.time * 1000 : q.tradedAt ? Date.parse(q.tradedAt) : undefined,
+          quotedAt,
           source: "live",
           session: q.session,
           name: q.name,

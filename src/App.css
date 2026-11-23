@@ -714,7 +714,7 @@ g.spark { animation: spark 0.16s steps(2) infinite alternate; transform-box: fil
 /* the corner: just a small Ticky; its menu opens beside it */
 .logo {
   display: block;
-  width: calc(26 * var(--u));
+  width: calc(30 * var(--u));
   height: calc(30 * var(--u));
   padding: 0;
   background: none;
@@ -723,8 +723,7 @@ g.spark { animation: spark 0.16s steps(2) infinite alternate; transform-box: fil
   opacity: 0.7;
   transition: opacity 0.15s, transform 0.15s;
 }
-.logo svg { width: 100%; height: 100%; overflow: visible; }
-.logo svg > ellipse:first-child { display: none; }
+.logo img { display: block; width: 100%; height: 100%; }
 .logo:hover, .logo.on { opacity: 1; transform: translateY(-2px); }
 .menu.logo-menu {
   bottom: 0;
@@ -838,9 +837,7 @@ g.spark { animation: spark 0.16s steps(2) infinite alternate; transform-box: fil
 }
 .side-brand { display: flex; align-items: center; gap: 8px; padding: 0 calc(8 * var(--u)) calc(16 * var(--u)); }
 .side-brand b { font-size: calc(16 * var(--u)); font-weight: 650; letter-spacing: -0.02em; }
-.side-logo { display: block; width: calc(22 * var(--u)); height: calc(26 * var(--u)); }
-.side-logo svg { width: 100%; height: 100%; overflow: visible; }
-.side-logo svg > ellipse:first-child { display: none; }
+.side-logo { display: block; width: calc(26 * var(--u)); height: calc(26 * var(--u)); }
 .settings-win .side button {
   padding: calc(8 * var(--u)) calc(10 * var(--u));
   font: 500 calc(13.5 * var(--u)) var(--ui-font);

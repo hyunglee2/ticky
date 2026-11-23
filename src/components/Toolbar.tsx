@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { tickySvg } from "../ticky/art";
+import logo from "../../design/ticky-logo.svg";
 import type { Layout } from "../sync";
 
 interface Props {
@@ -8,9 +8,6 @@ interface Props {
   /** open the settings window (watchlist, screen, price sources) */
   onSettings: () => void;
 }
-
-// the little Ticky in the corner that everything is managed from (static markup from art.ts)
-const LOGO = tickySvg("good", "up", "티키 메뉴");
 
 /**
  * The bottom-right corner: just a small Ticky. Click or right-click it for a short menu:
@@ -47,8 +44,9 @@ export function Toolbar({ layout, onLayout, onSettings }: Props) {
         aria-expanded={menu}
         onClick={() => setMenu(!menu)}
         onContextMenu={(e) => { e.preventDefault(); setMenu(!menu); }}
-        dangerouslySetInnerHTML={{ __html: LOGO }}
-      />
+      >
+        <img src={logo} alt="" draggable={false} />
+      </button>
       {menu && (
         <div className="menu logo-menu" role="menu">
           <button type="button" role="menuitem" onClick={() => { setMenu(false); onSettings(); }}>설정</button>

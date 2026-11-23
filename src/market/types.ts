@@ -9,6 +9,9 @@ export interface Quote {
   prevClose: number;
   changePct: number;   // vs previous close, in %
   history: number[];   // today's prices, oldest first
+  /** live only: prices since trading last resumed (after a quiet stretch or a session change),
+   *  so a market opening's jump isn't taken for a sudden move */
+  recent?: number[];
   updatedAt: number;   // ms epoch, when we received it
   quotedAt?: number;   // ms epoch, when the exchange printed this price (live only)
   source: "fake" | "live";

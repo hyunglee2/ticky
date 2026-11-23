@@ -26,6 +26,11 @@ const SHOCK_PCT = 2, SHOCK_MS = 3000;
 const ALARM_PCT = 3, ALARM_MS = 8000, JUMP_ALARM_GAP = 5 * 60_000;
 
 /** how many history points cover ~5 minutes: live KRX every 7 s, live US every 15 s, fake every 1.5 s */
+/** the middle of three prices around index i: one odd print can't fake a sudden move */
+const steady = (h: number[], i: number) => {
+  const a = h.slice(Math.max(0, i - 1), i + 2).sort((x, y) => x - y);
+  return a[Math.floor((a.length - 1) / 2)];
+};
 const fiveMinTicks = (q: Quote) => (q.source === "live" ? (isKrx(q.symbol) ? 43 : 20) : 20);
 // a new chart-flow line (반등, 반납 …) speaks up at most this often; otherwise it joins the chatter
 const TREND_GAP = 2 * 60_000;
@@ -161,8 +166,11 @@ export default function App() {
       // movement over the last ~5 minutes
       const h = q.history;
       const n = fiveMinTicks(q);
-      const recent = h.length > n ? h[h.length - 1 - n] : h[0];
-      const move = (h[h.length - 1] / recent - 1) * 100;
+      // since trading last resumed only (a market opening's jump isn't a sudden move),
+      // the last few prices against those ~5 minutes earlier
+      const r = q.recent ?? h;
+      const last = r.length - 1;
+      const move = last < 2 ? 0 : (steady(r, last - 1) / steady(r, Math.max(1, last - n)) - 1) * 100;
 
       let shockUntil = old?.shockUntil ?? 0;
       if (Math.abs(move) >= SHOCK_PCT && now >= shockUntil + SHOCK_MS) shockUntil = now + SHOCK_MS;

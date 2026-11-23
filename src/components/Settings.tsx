@@ -4,7 +4,7 @@ import type { FeedStatus, LiveStatus, Quote } from "../market/types";
 import { SCALES, useTextScale } from "../scale";
 import { EV, on, send, type Layout, type SetMessage, type Settings as Values, type Snapshot } from "../sync";
 import type { MoodKey } from "../ticky/moods";
-import { tickySvg } from "../ticky/art";
+import logo from "../../design/ticky-logo.svg";
 import { MAX_LIST, useWatchlist } from "../watchlist";
 import { KisBox } from "./KisBox";
 import { WatchlistPanel } from "./WatchlistPanel";
@@ -28,8 +28,6 @@ const LIVE_TEXT: Record<LiveStatus, string> = {
   "rate-limit": "잠시 쉬는 중",
   error: "연결 안 됨",
 };
-
-const LOGO = tickySvg("good", "up", "티키");
 
 function load<T>(key: string, fallback: T): T {
   try {
@@ -85,7 +83,7 @@ export function Settings({ bridge, onClose }: { bridge?: Bridge; onClose?: () =>
     <div className="settings-win panel">
       <nav className="side">
         <div className="side-brand">
-          <span className="side-logo" dangerouslySetInnerHTML={{ __html: LOGO }} />
+          <img className="side-logo" src={logo} alt="" draggable={false} />
           <b>ticky</b>
         </div>
         {PAGES.map((p) => (
