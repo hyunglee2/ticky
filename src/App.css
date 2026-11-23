@@ -1,5 +1,6 @@
 @import "@fontsource/gaegu/400.css";
 @import "@fontsource/gaegu/700.css";
+@import "pretendard/dist/web/variable/pretendardvariable.css";
 
 :root {
   --up: #f04452;
@@ -18,7 +19,12 @@
   --t: 1;
   --p: calc(1px * var(--s));
   --u: calc(1px * var(--t));
-  font-family: "Gaegu", system-ui, sans-serif;
+  /* numbers, names and menus in a clean, readable face; the handwritten Gaegu only for what
+     the Tickies say (speech bubbles), where its charm matters more than precision */
+  --ui-font: "Pretendard Variable", Pretendard, "Malgun Gothic", "Segoe UI", system-ui, sans-serif;
+  --fun-font: "Gaegu", "Pretendard Variable", sans-serif;
+  font-family: var(--ui-font);
+  letter-spacing: -0.01em;
   color: var(--ink);
 }
 
@@ -128,10 +134,12 @@ html, body, #root {
   animation: pop 0.32s cubic-bezier(0.2, 1.6, 0.4, 1) both;
   border: 2px solid var(--ink);
   border-radius: 1em 0.85em 1.08em 0.77em;
-  font-size: calc(13 * var(--p));
+  font-family: var(--fun-font); /* the Tickies talk in handwriting */
+  font-size: calc(14.5 * var(--p)); /* handwriting reads small: a size up */
   font-weight: 700;
   line-height: 1.1;
   white-space: nowrap;
+  letter-spacing: 0;
 }
 .bubble::after {
   content: "";
@@ -158,7 +166,7 @@ html, body, #root {
 .tag {
   padding: 0 calc(6 * var(--u));
   font-size: calc(12.5 * var(--u));
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1.35;
   background: rgba(255, 255, 255, 0.85);
   border-radius: calc(8 * var(--u));
@@ -184,22 +192,23 @@ html, body, #root {
   bottom: calc(var(--head) * 102 / 140 * var(--p) + 2px);
   left: 50%;
   transform: translateX(-50%);
-  width: calc(128 * var(--u));
-  padding: calc(6 * var(--u)) calc(6 * var(--u)) calc(4 * var(--u));
+  width: calc(132 * var(--u));
+  padding: calc(7 * var(--u)) calc(8 * var(--u)) calc(6 * var(--u));
   background: #fff;
   border: 2px solid var(--ink);
   border-radius: calc(11 * var(--u));
   z-index: 2;
 }
-.card-top { display: flex; justify-content: space-between; font-size: calc(13 * var(--u)); font-weight: 700; }
-.card-mood { color: #777; font-weight: 400; }
-.card-price { font-size: calc(17 * var(--u)); font-weight: 700; line-height: 1.1; }
-.card-change { font-size: calc(12 * var(--u)); font-weight: 700; }
-.sparkline { display: block; width: 100%; height: auto; margin-top: 2px; }
+/* one clear step from title to price to the small print (Pretendard's bold is heavy: kept light) */
+.card-top { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; font-size: calc(12.5 * var(--u)); font-weight: 600; }
+.card-mood { color: #999; font-size: calc(11 * var(--u)); font-weight: 400; white-space: nowrap; }
+.card-price { margin-top: calc(3 * var(--u)); font-size: calc(18 * var(--u)); font-weight: 650; line-height: 1.15; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.card-change { font-size: calc(11.5 * var(--u)); font-weight: 500; font-variant-numeric: tabular-nums; }
+.sparkline { display: block; width: 100%; height: auto; margin: calc(4 * var(--u)) 0 calc(2 * var(--u)); }
 .card-source {
-  font-size: calc(11 * var(--u));
-  line-height: 1.25;
-  color: #888;
+  font-size: calc(10.5 * var(--u));
+  line-height: 1.3;
+  color: #999;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -220,7 +229,7 @@ html, body, #root {
   width: calc(22 * var(--u));
   height: calc(22 * var(--u));
   padding: 0;
-  font: 700 calc(13 * var(--u))/1 "Gaegu", sans-serif;
+  font: 700 calc(13 * var(--u))/1 var(--ui-font);
   color: var(--ink);
   background: #fff;
   border: 2px solid var(--ink);
@@ -233,25 +242,31 @@ html, body, #root {
   position: absolute;
   right: calc(30 * var(--u));
   bottom: 0;
-  width: calc(260 * var(--u));
-  padding: calc(8 * var(--u));
+  width: calc(276 * var(--u));
+  padding: calc(14 * var(--u)) calc(16 * var(--u));
   background: #fff;
   border: 2px solid var(--ink);
   border-radius: calc(11 * var(--u));
   font-size: calc(14 * var(--u));
   z-index: 3;
 }
+/* soft search field: a tinted pill, outlined only while typing */
 .panel input:not([type]), .panel input[type="text"] {
   width: 100%;
   min-width: 0;
-  padding: 2px calc(6 * var(--u));
-  font: 400 calc(14 * var(--u)) "Gaegu", sans-serif;
-  border: 2px solid var(--ink);
-  border-radius: calc(10 * var(--u));
+  padding: calc(5 * var(--u)) calc(9 * var(--u));
+  font: 400 calc(13 * var(--u)) var(--ui-font);
+  color: var(--ink);
+  background: #f4f2ee;
+  border: 1.5px solid transparent;
+  border-radius: calc(9 * var(--u));
+  outline: none;
 }
+.panel input:not([type])::placeholder, .panel input[type="text"]::placeholder { color: #aaa; }
+.panel input:not([type]):focus, .panel input[type="text"]:focus { background: #fff; border-color: #cfc9bf; }
 .panel button {
   padding: 1px calc(8 * var(--u));
-  font: 700 calc(14 * var(--u)) "Gaegu", sans-serif;
+  font: 700 calc(14 * var(--u)) var(--ui-font);
   color: #fff;
   background: var(--ink);
   border: 0;
@@ -260,30 +275,19 @@ html, body, #root {
 }
 .panel label { display: flex; gap: 6px; align-items: center; }
 .panel label.off { opacity: 0.45; }
-.sizes { display: flex; flex-wrap: nowrap; gap: 4px; align-items: center; margin-bottom: 6px; white-space: nowrap; }
-.sizes span { font-weight: 700; margin-right: 2px; }
-.panel .sizes button { color: var(--ink); background: #fff; border: 2px solid var(--ink); padding: 0 calc(6 * var(--u)); }
-.panel .sizes button.on { color: #fff; background: var(--ink); }
-.hint { margin: 6px 0 0; font-size: calc(13 * var(--u)); color: #777; line-height: 1.2; }
-.keybox { margin-top: 8px; padding-top: 6px; border-top: 1.5px dashed #ccc; }
-.keybox-title { display: flex; justify-content: space-between; gap: 6px; font-weight: 700; margin-bottom: 4px; }
-.live { font-weight: 400; font-size: calc(12 * var(--u)); }
-.live-ok { color: #1a9b5a; }
-.live-connecting { color: #777; }
-.live-rate-limit, .live-error { color: var(--up); }
 
 /* watchlist panel: title + count, search to add, the list (drag to reorder, ✕ = delete) */
 .watchlist {
   display: flex;
   flex-direction: column;
   gap: calc(6 * var(--u));
-  /* fixed height so the search dropdown (up to 8 hits) always fits inside the panel */
-  height: calc(250 * var(--u));
+  /* tall enough that the search dropdown always fits inside the panel, grows with the list */
+  min-height: calc(210 * var(--u));
 }
-.wl-head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 calc(2 * var(--u)); }
-.wl-head b { font-size: calc(15 * var(--u)); }
-.wl-count { font-size: calc(12 * var(--u)); color: #999; font-variant-numeric: tabular-nums; }
-.wl-count.full { color: #c46a00; }
+.wl-head { display: flex; align-items: baseline; justify-content: space-between; }
+.wl-head b { font-size: calc(14 * var(--u)); font-weight: 600; }
+.wl-count { font-size: calc(11.5 * var(--u)); color: #aaa; font-variant-numeric: tabular-nums; }
+.wl-count.full { color: #aaa; }
 .search { position: relative; }
 .hits {
   position: absolute;
@@ -350,7 +354,7 @@ html, body, #root {
 .panel .row-delete { opacity: 0; }
 .list .row:hover .row-delete, .panel .row-delete:focus-visible { opacity: 1; }
 .panel .row-delete:hover { color: #fff; background: #f04452; }
-.wl-foot { margin: 0; font-size: calc(11 * var(--u)); color: #aaa; text-align: center; }
+.wl-foot { margin: 0; font-size: calc(10.5 * var(--u)); color: #b3ada3; text-align: center; }
 
 .empty {
   position: absolute;
@@ -392,7 +396,7 @@ html, body, #root {
   align-items: flex-start;
   gap: 1px;
   padding: calc(4 * var(--u)) calc(8 * var(--u));
-  font: 400 calc(12 * var(--u)) "Gaegu", sans-serif;
+  font: 400 calc(12 * var(--u)) var(--ui-font);
   color: var(--ink);
   background: #fff;
   border: 2px solid var(--ink);
@@ -406,7 +410,7 @@ html, body, #root {
 .onboard-skip {
   margin-top: calc(6 * var(--u));
   padding: 0;
-  font: 400 calc(12 * var(--u)) "Gaegu", sans-serif;
+  font: 400 calc(12 * var(--u)) var(--ui-font);
   color: #888;
   background: none;
   border: 0;
@@ -496,7 +500,7 @@ g.spark { animation: spark 0.16s steps(2) infinite alternate; transform-box: fil
 }
 .menu button {
   padding: calc(4 * var(--u)) calc(8 * var(--u));
-  font: 400 calc(14 * var(--u))/1.2 "Gaegu", sans-serif;
+  font: 400 calc(14 * var(--u))/1.2 var(--ui-font);
   color: var(--ink);
   text-align: left;
   white-space: nowrap;
@@ -536,27 +540,6 @@ g.spark { animation: spark 0.16s steps(2) infinite alternate; transform-box: fil
 .pet > .tag { transition: opacity 0.2s ease-out; }
 .pet[data-held="1"] > .tag, .pet[data-air="1"] > .tag, .pet[data-righting="1"] > .tag { opacity: 0; transition: none; }
 
-/* ---- 레이아웃: 티키 출근 / 퇴근 ---- */
-.layouts { display: flex; gap: 4px; margin-bottom: 8px; }
-.panel .layouts button {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1px;
-  padding: calc(4 * var(--u)) calc(7 * var(--u));
-  color: var(--ink);
-  text-align: left;
-  background: #fff;
-  border: 2px solid var(--ink);
-  border-radius: calc(9 * var(--u));
-  cursor: pointer;
-}
-.panel .layouts button b { font-size: calc(14 * var(--u)); }
-.panel .layouts button span { font-size: calc(11.5 * var(--u)); color: #777; line-height: 1.15; }
-.panel .layouts button.on { color: #fff; background: var(--ink); }
-.panel .layouts button.on span { color: #ddd; }
-
 /* 퇴근: just the prices, stacked in the bottom-right corner beside the toolbar */
 /* stacked right above the corner Ticky, right edges lined up with it: one tidy column */
 .ticker {
@@ -585,10 +568,10 @@ g.spark { animation: spark 0.16s steps(2) infinite alternate; transform-box: fil
   transition: opacity 0.15s, background 0.15s;
 }
 .ticker:hover .ticker-row { opacity: 1; background: rgba(255, 255, 255, 0.9); }
-.ticker-name { font-weight: 700; }
+.ticker-name { font-weight: 500; }
 /* fixed-width number columns, so the prices, %s and session labels line up row to row */
 .ticker-price { min-width: calc(72 * var(--u)); color: #666; text-align: right; }
-.ticker-pct { min-width: calc(50 * var(--u)); text-align: right; }
+.ticker-pct { min-width: calc(50 * var(--u)); text-align: right; font-weight: 600; }
 .ticker-row[data-asleep="1"] { opacity: 0.5; }
 /* that stock's 비상: just a small red dot blinking in front of the name for the alarm's 8 seconds */
 .ticker-row[data-alarm="1"]::before {
@@ -646,7 +629,7 @@ g.spark { animation: spark 0.16s steps(2) infinite alternate; transform-box: fil
   align-items: center;
   padding-left: calc(8 * var(--u));
   overflow: hidden;
-  font: 700 calc(12 * var(--u))/1 "Gaegu", sans-serif;
+  font: 700 calc(12 * var(--u))/1 var(--ui-font);
   color: #fff;
   white-space: nowrap;
   background: #f0a0a6;
@@ -726,7 +709,7 @@ g.spark { animation: spark 0.16s steps(2) infinite alternate; transform-box: fil
 .ticker.in-panel .ticker-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .ticker.in-panel .ticker-row[data-slid="1"], .ticker.in-panel[data-dragging] .ticker-row { background: #ece8e1; }
 .ticker.in-panel .ticker-item { display: block; }
-.card-full { margin-top: -1px; font-size: calc(10.5 * var(--u)); color: #999; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-full { margin-top: 1px; font-size: calc(10.5 * var(--u)); color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* the corner: just a small Ticky; its menu opens beside it */
 .logo {
@@ -751,3 +734,151 @@ g.spark { animation: spark 0.16s steps(2) infinite alternate; transform-box: fil
 }
 /* 대성통곡: the melted puddle spreads 4 units lower than the feet, so its tag sits that much lower */
 .pet[data-mood="melt"] > .tag { margin-top: calc(-2.9 * var(--p)); }
+
+
+/* ---- settings panel: sections, segmented choices, switches, source rows ---- */
+.panel.settings { display: flex; flex-direction: column; gap: calc(14 * var(--u)); font-size: calc(13 * var(--u)); }
+.set-sec { display: flex; flex-direction: column; gap: calc(8 * var(--u)); }
+.set-sec + .set-sec { padding-top: calc(14 * var(--u)); border-top: 1px solid #eeeae4; }
+.set-label { font-size: calc(11.5 * var(--u)); font-weight: 600; color: #999; }
+.set-hint { margin: 0; font-size: calc(11 * var(--u)); color: #aaa; line-height: 1.35; }
+/* segmented control: a tinted track, the chosen one lifts out white */
+.seg { display: flex; gap: 2px; padding: 2px; background: #f1eee9; border-radius: calc(9 * var(--u)); }
+.panel .seg button {
+  flex: 1;
+  padding: calc(5 * var(--u)) 0;
+  font: 500 calc(12.5 * var(--u)) var(--ui-font);
+  color: #888;
+  white-space: nowrap;
+  background: none;
+  border: 0;
+  border-radius: calc(7 * var(--u));
+  cursor: pointer;
+}
+.panel .seg button:hover { color: var(--ink); }
+.panel .seg button.on { color: var(--ink); font-weight: 600; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
+/* switches */
+.panel .switch-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; }
+.switch-row.sub { color: #777; }
+.switch-row.off { opacity: 0.4; cursor: default; }
+.switch-row input { position: absolute; opacity: 0; pointer-events: none; }
+.switch {
+  position: relative;
+  flex: none;
+  width: calc(30 * var(--u));
+  height: calc(17 * var(--u));
+  background: #ddd8cf;
+  border-radius: 99px;
+  transition: background 0.15s;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(13 * var(--u));
+  height: calc(13 * var(--u));
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s;
+}
+.switch-row input:checked + .switch { background: var(--ink); }
+.switch-row input:checked + .switch::after { transform: translateX(calc(13 * var(--u))); }
+.switch-row input:focus-visible + .switch { outline: 2px solid #9ab; outline-offset: 2px; }
+/* price sources: dot · name · how often / action */
+.src-row { display: flex; align-items: center; gap: calc(7 * var(--u)); }
+.src-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.src-meta { font-size: calc(11.5 * var(--u)); color: #aaa; white-space: nowrap; }
+.dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: #ccc; }
+.dot-ok { background: #2fb36b; }
+.dot-connecting { background: #e0b03a; }
+.dot-rate-limit, .dot-error { background: #f04452; }
+.panel .src-btn {
+  padding: calc(2 * var(--u)) calc(9 * var(--u));
+  font: 500 calc(11.5 * var(--u)) var(--ui-font);
+  color: #666;
+  white-space: nowrap;
+  background: #f1eee9;
+  border: 0;
+  border-radius: 99px;
+  cursor: pointer;
+}
+.panel .src-btn:hover { color: var(--ink); background: #e8e4dd; }
+.panel .src-btn.solid { color: #fff; background: var(--ink); }
+.panel .src-btn:disabled { opacity: 0.4; cursor: default; }
+.kis-form { display: flex; flex-direction: column; gap: calc(6 * var(--u)); }
+.kis-foot { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.panel .kis-form input { background: #f4f2ee; border: 1.5px solid transparent; border-radius: calc(8 * var(--u)); padding: calc(4 * var(--u)) calc(8 * var(--u)); font: 400 calc(12.5 * var(--u)) var(--ui-font); outline: none; }
+.panel .kis-form input:focus { background: #fff; border-color: #cfc9bf; }
+.panel .kis-form input[type="password"] { width: 100%; }
+.src-meta { min-width: calc(48 * var(--u)); text-align: right; }
+.panel .switch-row, .src-row { min-height: calc(22 * var(--u)); }
+
+/* ---- the settings window (its own framed window: ?view=settings) ---- */
+.settings-page, .settings-page body, .settings-page #root { background: #fff; overflow: hidden; user-select: auto; }
+.settings-win.panel {
+  position: static;
+  display: grid;
+  grid-template-columns: calc(150 * var(--u)) 1fr;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  font-size: calc(13.5 * var(--u));
+}
+.settings-win .side {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: calc(18 * var(--u)) calc(10 * var(--u));
+  background: #f7f5f1;
+  border-right: 1px solid #ece8e1;
+}
+.side-brand { display: flex; align-items: center; gap: 8px; padding: 0 calc(8 * var(--u)) calc(16 * var(--u)); }
+.side-brand b { font-size: calc(16 * var(--u)); font-weight: 650; letter-spacing: -0.02em; }
+.side-logo { display: block; width: calc(22 * var(--u)); height: calc(26 * var(--u)); }
+.side-logo svg { width: 100%; height: 100%; overflow: visible; }
+.side-logo svg > ellipse:first-child { display: none; }
+.settings-win .side button {
+  padding: calc(8 * var(--u)) calc(10 * var(--u));
+  font: 500 calc(13.5 * var(--u)) var(--ui-font);
+  color: #666;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: calc(8 * var(--u));
+  cursor: pointer;
+}
+.settings-win .side button:hover { color: var(--ink); background: #efece6; }
+.settings-win .side button.on { color: var(--ink); font-weight: 600; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); }
+.settings-win .side .side-close { margin-top: auto; color: #999; }
+.settings-win .content {
+  display: flex;
+  flex-direction: column;
+  gap: calc(18 * var(--u));
+  min-width: 0;
+  padding: calc(22 * var(--u)) calc(26 * var(--u));
+  overflow-y: auto;
+}
+.settings-win .content h2 { margin: 0; font-size: calc(18 * var(--u)); font-weight: 650; letter-spacing: -0.02em; }
+.settings-win .set-sec + .set-sec { padding-top: calc(18 * var(--u)); }
+.settings-win .watchlist.bare { min-height: 0; flex: 1; gap: calc(10 * var(--u)); }
+.settings-win .watchlist.bare .wl-head { display: none; }
+/* browser preview only: the same settings, centred over the page */
+.settings-inline {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 600px;
+  height: 440px;
+  transform: translate(-50%, -50%);
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.18);
+  z-index: 20;
+}
+.h2-count { margin-left: 4px; font-size: calc(13 * var(--u)); font-weight: 400; color: #aaa; }

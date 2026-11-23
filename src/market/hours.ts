@@ -16,3 +16,14 @@ export function isMarketOpen(symbol: string, now = new Date()) {
   if (weekday === "Sat" || weekday === "Sun") return false;
   return krx ? minutes >= 540 && minutes < 930 : minutes >= 570 && minutes < 960;
 }
+
+/**
+ * US 주간거래 (day market): New York 20:00–04:00, Sunday night to Friday morning — daytime in Korea.
+ * Yahoo has nothing in these hours; with a KIS app key the feed switches to KIS.
+ */
+export function isUsDayMarket(now = new Date()) {
+  const { weekday, minutes } = localParts(now, "America/New_York");
+  const evening = minutes >= 20 * 60 && ["Sun", "Mon", "Tue", "Wed", "Thu"].includes(weekday);
+  const early = minutes < 4 * 60 && ["Mon", "Tue", "Wed", "Thu", "Fri"].includes(weekday);
+  return evening || early;
+}

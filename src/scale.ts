@@ -39,7 +39,7 @@ export function useTextScale() {
 const CONTENT = ".pet, .above, .card, .menu, .ticker, .toolbar, .panel, .onboard, .empty";
 const MARGIN = 6;      // breathing room around the content, in CSS px
 const SHRINK_MS = 1500; // wait before shrinking (after a panel closes)
-const PANEL_EST = 290; // tallest toolbar panel (settings with both price sources, or the watchlist), same units
+const PANEL_EST = 100; // the corner Ticky's menu (settings live in their own window now), same units
 const CARD_EST = 170;  // details card height in text units (a bit over the real ~130-150), until one is measured
 
 /**
@@ -63,10 +63,10 @@ function reservedTop(): number {
     const anchor = fig.getBoundingClientRect().bottom - (head * 102 / 140) * s - 2;
     top = Math.min(top, anchor - h);
   }
-  // the toolbar's panels (settings, watchlist) open upward from its bottom: keep room for the
-  // tallest so opening one never resizes the window either
+  // the corner Ticky's menu opens upward from the toolbar's bottom: keep room for it so
+  // opening it never resizes the window either
   const toolbar = document.querySelector(".toolbar");
-  const panel = document.querySelector(".panel");
+  const panel = document.querySelector(".logo-menu");
   if (panel) panelHeight = Math.max(panelHeight, panel.getBoundingClientRect().height);
   if (toolbar) top = Math.min(top, toolbar.getBoundingClientRect().bottom - Math.max(panelHeight, PANEL_EST * t) - 4);
   // 퇴근 layout: a price row's details card opens beside it, bottom-aligned with the row.

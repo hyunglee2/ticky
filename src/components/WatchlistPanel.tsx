@@ -36,12 +36,14 @@ const NOTICE: Record<AddResult, string> = {
 };
 
 interface Props {
+  /** inside the settings window: no floating-panel frame */
+  bare?: boolean;
   watch: Watchlist;
   quotes: Record<string, Quote>;
   moods: Record<string, MoodKey>;
 }
 
-export function WatchlistPanel({ watch, quotes, moods }: Props) {
+export function WatchlistPanel({ bare, watch, quotes, moods }: Props) {
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<Hit[]>([]);
   const [searching, setSearching] = useState(false);
@@ -82,7 +84,7 @@ export function WatchlistPanel({ watch, quotes, moods }: Props) {
   const full = watch.entries.length >= MAX_LIST;
 
   return (
-    <div className="panel watchlist">
+    <div className={bare ? "watchlist bare" : "panel watchlist"}>
       <div className="wl-head">
         <b>관심 종목</b>
         <span className={full ? "wl-count full" : "wl-count"}>{watch.entries.length}/{MAX_LIST}</span>

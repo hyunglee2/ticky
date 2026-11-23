@@ -16,13 +16,15 @@ export interface Quote {
   name?: string;       // official name from the data source, when it gives one
 }
 
-export type Session = "pre" | "regular" | "post" | "closed";
+/** day = US 주간거래 (overnight in New York, daytime in Korea), from KIS */
+export type Session = "pre" | "regular" | "post" | "day" | "closed";
 
 /** State of each live connection, for the settings panel and the 연결 끊김 state. */
 export type LiveStatus = "off" | "connecting" | "ok" | "rate-limit" | "error";
 export interface FeedStatus {
   us: LiveStatus;    // Yahoo
   kr: LiveStatus;    // Naver
+  day: LiveStatus;   // KIS (US 주간거래); "off" when no app key is connected
   missing: string[]; // live symbols the sources don't know
 }
 

@@ -1,3 +1,4 @@
+mod kis;
 mod naver;
 mod search;
 mod yahoo;
@@ -155,6 +156,28 @@ fn dock_to_bottom(app: &AppHandle, height: Option<f64>) -> tauri::Result<()> {
     Ok(())
 }
 
+/// Open the settings window in the middle of the screen (or bring it to the front if it's open).
+/// A plain, framed window of its own: the Tickies' window is a transparent click-through strip,
+/// which is no place for forms. Async so creating the window can't deadlock on Windows.
+#[tauri::command]
+async fn open_settings(app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("settings") {
+        let _ = w.unminimize();
+        let _ = w.show();
+        let _ = w.set_focus();
+        return Ok(());
+    }
+    tauri::WebviewWindowBuilder::new(&app, "settings", tauri::WebviewUrl::App("index.html?view=settings".into()))
+        .title("ticky 설정")
+        .inner_size(600.0, 460.0)
+        .min_inner_size(520.0, 400.0)
+        .center()
+        .focused(true)
+        .build()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
 /// Called by the UI whenever what's on screen needs a different height (cards, panels, size setting).
 #[tauri::command]
 fn dock_bottom(app: AppHandle, height: f64) {
@@ -165,11 +188,17 @@ fn dock_bottom(app: AppHandle, height: f64) {
 pub fn run() {
     tauri::Builder::default()
         .manage(HitRegions::default())
+        .manage(kis::KisState::default())
         .invoke_handler(tauri::generate_handler![
             set_hit_regions,
             text_scale,
             dock_bottom,
+            open_settings,
             yahoo::fetch_yahoo_quotes,
+            kis::fetch_kis_quotes,
+            kis::kis_status,
+            kis::kis_connect,
+            kis::kis_disconnect,
             naver::fetch_naver_quotes,
             search::search_stocks
         ])

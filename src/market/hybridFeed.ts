@@ -1,10 +1,12 @@
 // Live quotes, fetched by the Rust side:
-//   - US tickers from Yahoo Finance every 15 s (pre-market and after-hours included)
+//   - US tickers from Yahoo Finance every 15 s (pre-market and after-hours included);
+//     during 주간거래 hours (daytime in Korea) from KIS instead, if the user connected an app key
 //   - KRX codes from Naver Finance every 7 s (near real-time)
 // Both are unofficial sources: fine for a personal prototype, to be replaced before release.
 // Outside the desktop app (browser preview) everything runs on the fake feed.
 import { invoke } from "@tauri-apps/api/core";
 import { createFakeFeed } from "./fakeFeed";
+import { isUsDayMarket } from "./hours";
 import { isKrx, type FeedStatus, type LiveStatus, type Quote, type QuoteProvider, type Session } from "./types";
 
 const HISTORY = 160;
@@ -43,14 +45,24 @@ export function createHybridFeed(liveEnabled: boolean): QuoteProvider {
   return {
     subscribe(items, onQuote, onStatus) {
       if (!liveEnabled) {
-        onStatus?.({ us: "off", kr: "off", missing: [] });
+        onStatus?.({ us: "off", kr: "off", day: "off", missing: [] });
         return fake.subscribe(items, onQuote);
       }
 
       let stopped = false;
-      const status: FeedStatus = { us: "off", kr: "off", missing: [] };
+      const status: FeedStatus = { us: "off", kr: "off", day: "off", missing: [] };
       const missing = { us: [] as string[], kr: [] as string[] };
       const report = () => onStatus?.({ ...status, missing: [...missing.us, ...missing.kr] });
+
+      // is a KIS app key connected? asked now and whenever the settings change it
+      let kisOn = false;
+      const checkKis = () => invoke<boolean>("kis_status").then((on) => {
+        kisOn = on;
+        status.day = on ? (status.day === "off" ? "ok" : status.day) : "off";
+        report();
+      }).catch(() => {});
+      checkKis();
+      window.addEventListener("ticky:kis-changed", checkKis);
 
       const emit = (q: RawQuote) => {
         const h = history.get(q.symbol) ?? [];
@@ -78,7 +90,23 @@ export function createHybridFeed(liveEnabled: boolean): QuoteProvider {
         status[src.key] = "connecting";
         const poll = async () => {
           try {
-            const batch = await invoke<RawBatch>(src.command, { [src.arg]: symbols });
+            let batch: RawBatch | undefined;
+            // US during 주간거래 hours: KIS when connected (falls back to Yahoo's last prices on failure)
+            if (src.key === "us" && kisOn && isUsDayMarket()) {
+              try {
+                batch = await invoke<RawBatch>("fetch_kis_quotes", { symbols });
+                status.day = "ok";
+                // tickers that don't trade in the day market keep Yahoo's last price
+                if (batch.missing.length) {
+                  const rest = await invoke<RawBatch>(src.command, { [src.arg]: batch.missing });
+                  batch = { quotes: [...batch.quotes, ...rest.quotes], missing: rest.missing };
+                }
+              } catch (e) {
+                status.day = statusFor(e);
+                batch = undefined;
+              }
+            }
+            batch ??= await invoke<RawBatch>(src.command, { [src.arg]: symbols });
             if (stopped) return;
             batch.quotes.forEach(emit);
             status[src.key] = "ok";
@@ -97,6 +125,7 @@ export function createHybridFeed(liveEnabled: boolean): QuoteProvider {
 
       return () => {
         stopped = true;
+        window.removeEventListener("ticky:kis-changed", checkKis);
         timers.forEach((t) => t && clearInterval(t));
       };
     },

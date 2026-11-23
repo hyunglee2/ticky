@@ -11,6 +11,9 @@ import { ALARM_LINES, bandMood, moodLines, pickFrom, pickLine, type AlarmReason,
 import { detectTrend, TREND_LINES, type Trend } from "./ticky/trend";
 import { nearestScale, useDockHeight, useTextScale, useTickyScale } from "./scale";
 import { useRoaming } from "./roam";
+import { invoke } from "@tauri-apps/api/core";
+import { EV, on, send, type Layout, type SetMessage, type Snapshot } from "./sync";
+import { Settings, type Bridge } from "./components/Settings";
 import { inTauri, useClickThroughRegions } from "./clickThrough";
 import { useWatchlist } from "./watchlist";
 import "./App.css";
@@ -57,7 +60,7 @@ const sameState = (a: PetState | undefined, b: PetState) =>
   a.alarmUntil === b.alarmUntil &&
   a.alarmReason === b.alarmReason && a.trend === b.trend && a.trendAt === b.trendAt;
 
-export type Layout = "roam" | "prices";
+export type { Layout };
 
 export default function App() {
   const watch = useWatchlist();
@@ -102,7 +105,7 @@ export default function App() {
   petsRef.current = pets;
   // live quotes need the Rust side, so only in the desktop app (not the browser preview)
   const liveEnabled = useMemo(() => inTauri(), []);
-  const [status, setStatus] = useState<FeedStatus>({ us: "off", kr: "off", missing: [] });
+  const [status, setStatus] = useState<FeedStatus>({ us: "off", kr: "off", day: "off", missing: [] });
   const feed = useMemo(() => createHybridFeed(liveEnabled), [liveEnabled]);
 
   // size setting scales only Tickies + bubbles; text follows Windows' text size
@@ -215,27 +218,46 @@ export default function App() {
   );
   useRoaming(moods);
 
+  // ---- the settings window ----------------------------------------------------------------
+  // it lives in its own window: send it what it shows (now and then, and when it says hello),
+  // and apply what it changes. In the browser preview there's no 2nd window: it opens in-page.
+  const snapshot: Snapshot = { quotes, moods, status, layout, scale, followHours, wakeExtended, preview };
+  const snapRef = useRef(snapshot);
+  snapRef.current = snapshot;
+  useEffect(() => {
+    if (!inTauri()) return;
+    const id = setInterval(() => send(EV.snapshot, snapRef.current), 1000);
+    const off = on(EV.hello, () => send(EV.snapshot, snapRef.current));
+    return () => { clearInterval(id); off(); };
+  }, []);
+  const apply = (m: SetMessage) => {
+    switch (m.key) {
+      case "layout": switchLayout(m.value); break;
+      case "scale": setScale(m.value); break;
+      case "followHours": setFollowHours(m.value); break;
+      case "wakeExtended": setWakeExtended(m.value); break;
+      case "preview": setPreview(m.value); break;
+    }
+  };
+  const applyRef = useRef(apply);
+  applyRef.current = apply;
+  useEffect(() => on<SetMessage>(EV.set, (m) => applyRef.current(m)), []);
+  const [inlineSettings, setInlineSettings] = useState(false);
+  const openSettings = () => {
+    if (inTauri()) invoke("open_settings").catch(() => {});
+    else setInlineSettings(true);
+  };
+  const bridge: Bridge = { snapshot, set: apply };
+
   return (
     <main className="desk">
       {!watch.ready && <Onboarding onPick={watch.start} />}
       {watch.ready && (
         <>
-          <Toolbar
-            watch={watch}
-            followHours={followHours}
-            onFollowHours={setFollowHours}
-            wakeExtended={wakeExtended}
-            onWakeExtended={setWakeExtended}
-            layout={layout}
-            onLayout={switchLayout}
-            scale={scale}
-            onScale={setScale}
-            preview={preview}
-            onPreview={setPreview}
-            status={status}
-            quotes={quotes}
-            moods={moods}
-          />
+          <Toolbar layout={layout} onLayout={switchLayout} onSettings={openSettings} />
+          {inlineSettings && (
+            <div className="settings-inline"><Settings bridge={bridge} onClose={() => setInlineSettings(false)} /></div>
+          )}
           <div className="pets">
             {preview && <StatePreview />}
             {!preview && onScreen === "prices" && shown.length > 0 && (

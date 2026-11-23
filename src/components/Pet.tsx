@@ -20,7 +20,7 @@ interface Props {
 }
 
 // short badge next to the % on the name tag, only outside regular hours
-const SESSION_BADGE: Partial<Record<Session, string>> = { pre: "장전", post: "장후" };
+const SESSION_BADGE: Partial<Record<Session, string>> = { pre: "장전", post: "장후", day: "주간" };
 
 const signed = (n: number, digits = 2) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(n).toFixed(digits)}`;
 const rand = (lo: number, hi: number) => lo + Math.random() * (hi - lo);

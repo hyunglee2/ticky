@@ -2,7 +2,8 @@
 //   - every stock on the list is on screen (as a Ticky or a price row); up to 5
 //   - first run starts from 3 representative stocks of the chosen market
 //   - add from the search box, delete from the list / a Ticky's menu / swiping a price row
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { EV, on, send } from "./sync";
 import type { WatchItem } from "./market/types";
 
 export const MAX_LIST = 5;
@@ -57,7 +58,22 @@ export function useWatchlist() {
   // null = never set up yet → show the first-run market picker
   const [entries, setEntries] = useState<WatchEntry[] | null>(read);
 
-  useEffect(() => { if (entries) write(entries); }, [entries]);
+  // saved here, and shared with the other window (Tickies ↔ settings): a change made in one
+  // shows up in the other. Only real changes are sent, so the two never echo each other.
+  const synced = useRef(JSON.stringify(entries));
+  useEffect(() => {
+    if (!entries) return;
+    write(entries);
+    const json = JSON.stringify(entries);
+    if (json !== synced.current) {
+      synced.current = json;
+      send(EV.watchlist, entries);
+    }
+  }, [entries]);
+  useEffect(() => on<WatchEntry[]>(EV.watchlist, (list) => {
+    synced.current = JSON.stringify(list);
+    setEntries(list);
+  }), []);
 
   const list = entries ?? [];
 

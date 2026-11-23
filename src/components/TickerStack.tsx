@@ -16,7 +16,7 @@ interface Props {
 }
 
 // quiet grey text after the %, outside regular hours
-const SESSION_BADGE: Partial<Record<Session, string>> = { pre: "장전", post: "장후", closed: "마감" };
+const SESSION_BADGE: Partial<Record<Session, string>> = { pre: "장전", post: "장후", day: "주간", closed: "마감" };
 const SLOP = 5;            // px before a press on a row becomes a drag (up/down) or a swipe (sideways)
 const DELETE_AT = 0.55;    // swiped this share of the row's width or more: let go and it's deleted
 const SLIDE_OUT_MS = 180;

@@ -6,14 +6,15 @@ import { Sparkline } from "./Sparkline";
 const STALE_MS = 15 * 60 * 1000;
 
 const SESSION_NAME: Record<Session, string> = {
-  pre: "프리마켓", regular: "정규장", post: "애프터마켓", closed: "장 마감",
+  pre: "프리마켓", regular: "정규장", post: "애프터마켓", day: "주간거래", closed: "장 마감",
 };
 
 /** Two short lines: where the price is from, and how fresh it is. */
 function sourceText(q: Quote): [string, string] {
   if (q.source === "fake") return ["가짜 시세", ""];
   const krx = isKrx(q.symbol);
-  const head = `${krx ? "네이버" : "Yahoo"} · ${q.session ? SESSION_NAME[q.session] : ""}`;
+  const from = krx ? "네이버" : q.session === "day" ? "한국투자증권" : "Yahoo";
+  const head = `${from} · ${q.session ? SESSION_NAME[q.session] : ""}`;
   if (q.quotedAt && Date.now() - q.quotedAt > STALE_MS) {
     const d = new Date(q.quotedAt);
     const hm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
