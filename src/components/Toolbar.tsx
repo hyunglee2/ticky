@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { tickySvg } from "../ticky/art";
 import type { FeedStatus, LiveStatus, Quote } from "../market/types";
 import type { MoodKey } from "../ticky/moods";
 import { SCALES } from "../scale";
@@ -29,6 +30,9 @@ const LAYOUTS: { value: Layout; label: string; hint: string }[] = [
   { value: "prices", label: "티키 퇴근", hint: "시세만 오른쪽 아래에 쌓아요" },
 ];
 
+// the little Ticky in the corner that everything is managed from (static markup from art.ts)
+const LOGO = tickySvg("good", "up", "티키 메뉴");
+
 const LIVE_TEXT: Record<LiveStatus, string> = {
   off: "",
   connecting: "연결 중…",
@@ -38,24 +42,52 @@ const LIVE_TEXT: Record<LiveStatus, string> = {
 };
 
 export function Toolbar({ watch, followHours, onFollowHours, wakeExtended, onWakeExtended, layout, onLayout, scale, onScale, preview, onPreview, status, quotes, moods }: Props) {
-  const [panel, setPanel] = useState<"none" | "list" | "settings">("none");
+  const [panel, setPanel] = useState<"none" | "menu" | "list" | "settings">("none");
+  const open = (next: typeof panel) => setPanel(panel === next ? "none" : next);
+
+  // the menu or a panel closes on Esc or a click anywhere else: in this window, or out on the
+  // desktop or another app (the click goes straight through to them, so this window loses focus)
+  useEffect(() => {
+    if (panel === "none") return;
+    const close = (e: Event) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !(e.target as Element).closest?.(".toolbar")) setPanel("none");
+    };
+    const lostFocus = () => setPanel("none");
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("keydown", close);
+    window.addEventListener("blur", lostFocus);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", close);
+      window.removeEventListener("blur", lostFocus);
+    };
+  }, [panel]);
 
   return (
     <div className="toolbar">
+      {/* just a small Ticky in the corner; click or right-click it for the menu */}
       <button
         type="button"
-        className={`tool ${panel === "list" ? "on" : ""}`}
-        title="관심 종목"
-        aria-pressed={panel === "list"}
-        onClick={() => setPanel(panel === "list" ? "none" : "list")}
-      >＋</button>
-      <button
-        type="button"
-        className={`tool ${panel === "settings" ? "on" : ""}`}
-        title="설정"
-        aria-pressed={panel === "settings"}
-        onClick={() => setPanel(panel === "settings" ? "none" : "settings")}
-      >⚙</button>
+        className={panel === "none" ? "logo" : "logo on"}
+        title="티키 메뉴 (클릭 또는 우클릭)"
+        aria-label="티키 메뉴"
+        aria-expanded={panel !== "none"}
+        onClick={() => open("menu")}
+        onContextMenu={(e) => { e.preventDefault(); open("menu"); }}
+        dangerouslySetInnerHTML={{ __html: LOGO }}
+      />
+
+      {panel === "menu" && (
+        <div className="menu logo-menu" role="menu">
+          <button type="button" role="menuitem" onClick={() => setPanel("list")}>관심 종목</button>
+          <button type="button" role="menuitem" onClick={() => setPanel("settings")}>설정</button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => { onLayout(layout === "roam" ? "prices" : "roam"); setPanel("none"); }}
+          >{layout === "roam" ? "티키 퇴근 (시세만 보기)" : "티키 출근 (돌아다니기)"}</button>
+        </div>
+      )}
 
       {panel === "list" && <WatchlistPanel watch={watch} quotes={quotes} moods={moods} />}
       {panel === "settings" && (

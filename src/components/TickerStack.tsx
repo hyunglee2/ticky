@@ -171,7 +171,7 @@ export function TickerStack({ items, quotes, moods, onMove, onDelete, inPanel }:
               <span className="ticker-name">{name}</span>
               <span className="ticker-price">{q && !offline ? formatPrice(item.symbol, q.price) : "—"}</span>
               <b className={`ticker-pct ${tone}`}>{q && !offline ? `${signed(pct)}%` : "—"}</b>
-              {badge && <span className="ticker-session">{badge}</span>}
+              <span className="ticker-session">{badge ?? ""}</span>{/* always there: keeps the columns lined up */}
             </div>
           </div>
         );

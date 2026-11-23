@@ -558,10 +558,11 @@ g.spark { animation: spark 0.16s steps(2) infinite alternate; transform-box: fil
 .panel .layouts button.on span { color: #ddd; }
 
 /* 퇴근: just the prices, stacked in the bottom-right corner beside the toolbar */
+/* stacked right above the corner Ticky, right edges lined up with it: one tidy column */
 .ticker {
   position: absolute;
-  right: calc(34 * var(--u));
-  bottom: 6px;
+  right: 6px;
+  bottom: calc(6px + 34 * var(--u));
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -585,7 +586,8 @@ g.spark { animation: spark 0.16s steps(2) infinite alternate; transform-box: fil
 }
 .ticker:hover .ticker-row { opacity: 1; background: rgba(255, 255, 255, 0.9); }
 .ticker-name { font-weight: 700; }
-.ticker-price { color: #666; }
+/* fixed-width number columns, so the prices, %s and session labels line up row to row */
+.ticker-price { min-width: calc(72 * var(--u)); color: #666; text-align: right; }
 .ticker-pct { min-width: calc(50 * var(--u)); text-align: right; }
 .ticker-row[data-asleep="1"] { opacity: 0.5; }
 /* that stock's 비상: just a small red dot blinking in front of the name for the alarm's 8 seconds */
@@ -627,7 +629,7 @@ g.spark { animation: spark 0.16s steps(2) infinite alternate; transform-box: fil
 .ticker-item { position: relative; display: flex; justify-content: flex-end; }
 .card.ticker-card { bottom: 0; left: auto; right: calc(100% + 6px); transform: none; }
 .ticker-row[data-open="1"] { opacity: 1; background: rgba(255, 255, 255, 0.9); }
-.ticker-session { font-size: calc(10.5 * var(--u)); color: #999; }
+.ticker-session { min-width: calc(20 * var(--u)); font-size: calc(10.5 * var(--u)); color: #999; text-align: left; }
 /* dragging a price row to reorder, or swiping it aside for its actions */
 .ticker-row { position: relative; z-index: 1; cursor: grab; touch-action: none; user-select: none; transition: transform 0.15s ease-out; }
 .ticker[data-dragging] .ticker-row { opacity: 1; background: rgba(255, 255, 255, 0.9); }
@@ -725,3 +727,27 @@ g.spark { animation: spark 0.16s steps(2) infinite alternate; transform-box: fil
 .ticker.in-panel .ticker-row[data-slid="1"], .ticker.in-panel[data-dragging] .ticker-row { background: #ece8e1; }
 .ticker.in-panel .ticker-item { display: block; }
 .card-full { margin-top: -1px; font-size: calc(10.5 * var(--u)); color: #999; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* the corner: just a small Ticky; its menu opens beside it */
+.logo {
+  display: block;
+  width: calc(26 * var(--u));
+  height: calc(30 * var(--u));
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.logo svg { width: 100%; height: 100%; overflow: visible; }
+.logo svg > ellipse:first-child { display: none; }
+.logo:hover, .logo.on { opacity: 1; transform: translateY(-2px); }
+.menu.logo-menu {
+  bottom: 0;
+  left: auto;
+  right: calc(30 * var(--u));
+  transform: none;
+}
+/* 대성통곡: the melted puddle spreads 4 units lower than the feet, so its tag sits that much lower */
+.pet[data-mood="melt"] > .tag { margin-top: calc(-2.9 * var(--p)); }

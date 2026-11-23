@@ -51,11 +51,14 @@ const LONG_NAME = 12;
  */
 export function displayName(item: WatchItem, quote?: Quote): string {
   if (isKrx(item.symbol)) return item.name === item.symbol && quote?.name ? quote.name : item.name;
-  return item.name === item.symbol || item.name.length > LONG_NAME ? item.symbol : item.name;
+  // tickers always in capitals, even when the source spells the name "Soxl" or "soxl"
+  const ticker = item.symbol.toUpperCase();
+  return item.name.toUpperCase() === ticker || item.name.length > LONG_NAME ? ticker : item.name;
 }
 
 /** The full name, for the details card (when it says more than the short one). */
 export function fullName(item: WatchItem, quote?: Quote): string | undefined {
-  const full = quote?.name && quote.name !== item.symbol ? quote.name : item.name;
+  const full = quote?.name && quote.name.toUpperCase() !== item.symbol.toUpperCase() ? quote.name : item.name;
+  if (full.toUpperCase() === item.symbol.toUpperCase()) return undefined;
   return full !== displayName(item, quote) ? full : undefined;
 }

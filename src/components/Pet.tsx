@@ -219,6 +219,7 @@ export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commu
       ref={root}
       className="pet"
       data-symbol={item.symbol}
+      data-mood={mood}
       data-pinned={pinX !== undefined ? "1" : undefined}
       data-stay={stay ? "1" : undefined}
       data-commute={commute}

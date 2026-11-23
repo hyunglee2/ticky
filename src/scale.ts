@@ -8,11 +8,15 @@ import { invoke } from "@tauri-apps/api/core";
 import { inTauri } from "./clickThrough";
 
 export const SCALES = [
+  { value: 0.65, label: "아주 작게" },
   { value: 0.8, label: "작게" },
   { value: 1, label: "보통" },
   { value: 1.25, label: "크게" },
-  { value: 1.5, label: "아주 크게" },
 ] as const;
+
+/** A saved size that's no longer offered (아주 크게 1.5) snaps to the nearest one. */
+export const nearestScale = (v: number) =>
+  SCALES.reduce((best, s) => (Math.abs(s.value - v) < Math.abs(best - v) ? s.value : best), 1 as number);
 
 const setVar = (name: string, value: number) => document.documentElement.style.setProperty(name, String(value));
 

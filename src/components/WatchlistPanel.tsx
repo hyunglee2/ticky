@@ -16,8 +16,15 @@ const PREVIEW_HITS: Hit[] = [
   { symbol: "SOXL", name: "SOXL", market: "US", exchange: "AMEX" },
 ];
 
+/** US tickers in capitals; a name that's just the ticker in other casing ("Soxl") becomes the ticker */
+const tidy = (h: Hit): Hit => {
+  if (h.market !== "US") return h;
+  const symbol = h.symbol.toUpperCase();
+  return { ...h, symbol, name: h.name.toUpperCase() === symbol ? symbol : h.name };
+};
+
 async function search(query: string): Promise<Hit[]> {
-  if (inTauri()) return invoke<Hit[]>("search_stocks", { query });
+  if (inTauri()) return (await invoke<Hit[]>("search_stocks", { query })).map(tidy);
   const q = query.toLowerCase();
   return PREVIEW_HITS.filter((h) => h.name.toLowerCase().includes(q) || h.symbol.toLowerCase().includes(q));
 }

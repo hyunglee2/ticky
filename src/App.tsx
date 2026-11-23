@@ -9,7 +9,7 @@ import { isMarketOpen } from "./market/hours";
 import { isKrx, type FeedStatus, type Quote } from "./market/types";
 import { ALARM_LINES, bandMood, moodLines, pickFrom, pickLine, type AlarmReason, type MoodKey } from "./ticky/moods";
 import { detectTrend, TREND_LINES, type Trend } from "./ticky/trend";
-import { useDockHeight, useTextScale, useTickyScale } from "./scale";
+import { nearestScale, useDockHeight, useTextScale, useTickyScale } from "./scale";
 import { useRoaming } from "./roam";
 import { inTauri, useClickThroughRegions } from "./clickThrough";
 import { useWatchlist } from "./watchlist";
@@ -106,7 +106,7 @@ export default function App() {
   const feed = useMemo(() => createHybridFeed(liveEnabled), [liveEnabled]);
 
   // size setting scales only Tickies + bubbles; text follows Windows' text size
-  const [scale, setScale] = useState<number>(() => load("ticky.scale", 1));
+  const [scale, setScale] = useState<number>(() => nearestScale(load("ticky.scale", 1)));
   useEffect(() => save("ticky.scale", scale), [scale]);
   useTickyScale(scale);
   useTextScale();
