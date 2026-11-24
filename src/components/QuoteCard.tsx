@@ -1,3 +1,4 @@
+import { isUsDayMarket } from "../market/hours";
 import { formatPrice, isKrx, type Quote, type Session } from "../market/types";
 import type { Tone } from "../ticky/moods";
 import { Sparkline } from "./Sparkline";
@@ -52,6 +53,10 @@ export function QuoteCard({ name, fullName, moodLabel, quote, tone, className }:
       {sourceText(quote).filter(Boolean).map((l) => (
         <div key={l} className="card-source">{l}</div>
       ))}
+      {/* US stock in Korean daytime without a KIS key: this is last night's price */}
+      {quote.source === "live" && !isKrx(quote.symbol) && quote.session !== "day" && isUsDayMarket() && (
+        <div className="card-tip">지금 주간거래 시세는 설정 → 시세 연결에서 한국투자증권을 연결하면 볼 수 있어요</div>
+      )}
     </div>
   );
 }

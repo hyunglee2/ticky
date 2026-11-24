@@ -205,6 +205,16 @@ html, body, #root {
 .card-price { margin-top: calc(3 * var(--u)); font-size: calc(18 * var(--u)); font-weight: 650; line-height: 1.15; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .card-change { font-size: calc(11.5 * var(--u)); font-weight: 500; font-variant-numeric: tabular-nums; }
 .sparkline { display: block; width: 100%; height: auto; margin: calc(4 * var(--u)) 0 calc(2 * var(--u)); }
+.card-tip {
+  margin-top: calc(6 * var(--u));
+  padding: calc(5 * var(--u)) calc(7 * var(--u));
+  font-size: calc(10.5 * var(--u));
+  line-height: 1.4;
+  color: #6b665e;
+  background: #f5f3ef;
+  border-radius: calc(6 * var(--u));
+  word-break: keep-all;
+}
 .card-source {
   font-size: calc(10.5 * var(--u));
   line-height: 1.3;

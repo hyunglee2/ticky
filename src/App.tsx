@@ -22,7 +22,7 @@ import "./App.css";
 // 놀람: a move of 2% or more within the last ~5 minutes, shown for 3 s
 const SHOCK_PCT = 2, SHOCK_MS = 3000;
 // a teased Ticky wears its plaster this long
-const PLASTER_MS = 10 * 60_000;
+const PLASTER_MS = 2 * 60_000;
 // shown when the watchlist is empty (no stock behind it)
 const GUIDE = { symbol: "__guide", name: "티키" };
 // 비상: siren + megaphone for 8 s, on any of

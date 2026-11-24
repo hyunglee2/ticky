@@ -40,7 +40,7 @@ const CONTENT = ".pet, .above, .card, .menu, .ticker, .toolbar, .panel, .onboard
 const MARGIN = 6;      // breathing room around the content, in CSS px
 const SHRINK_MS = 1500; // wait before shrinking (after a panel closes)
 const PANEL_EST = 100; // the corner Ticky's menu (settings live in their own window now), same units
-const CARD_EST = 170;  // details card height in text units (a bit over the real ~130-150), until one is measured
+const CARD_EST = 200;  // details card height in text units (a bit over the real ~130-150), until one is measured
 
 /**
  * Resizing a transparent window makes Windows repaint it, which shows as a flicker. So the
