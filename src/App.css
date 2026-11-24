@@ -320,7 +320,7 @@ html, body, #root {
 .hit-added { margin-left: auto; font-size: calc(11 * var(--u)); color: #888; white-space: nowrap; }
 .hits-empty { padding: 2px calc(6 * var(--u)); color: #888; font-size: calc(13 * var(--u)); }
 .notice { margin: 0; font-size: calc(12.5 * var(--u)); color: #c46a00; line-height: 1.2; }
-.list { flex: 1; min-height: 0; overflow-y: auto; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.list { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
 .list .row {
   display: flex;
   align-items: center;
@@ -356,25 +356,15 @@ html, body, #root {
 .panel .row-delete:hover { color: #fff; background: #f04452; }
 .wl-foot { margin: 0; font-size: calc(10.5 * var(--u)); color: #b3ada3; text-align: center; }
 
-.empty {
-  position: absolute;
-  right: calc(40 * var(--u));
-  bottom: 8px;
-  margin: 0;
-  font-size: calc(15 * var(--u));
-  font-weight: 700;
-  background: rgba(255, 255, 255, 0.82);
-  padding: 4px 10px;
-  border-radius: 10px;
-  white-space: nowrap;
-}
 
 /* first run: pick a market */
+.welcome-page, .welcome-page body, .welcome-page #root { background: transparent; overflow: hidden; }
+/* the first-run picker sits in the middle of its window (or of the page, in the browser preview) */
 .onboard {
-  position: absolute;
+  position: fixed;
   left: 50%;
-  bottom: 4px;
-  transform: translateX(-50%);
+  top: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   align-items: flex-end;
   gap: calc(6 * var(--u));

@@ -7,7 +7,7 @@ import { TickerStack } from "./components/TickerStack";
 import { createHybridFeed } from "./market/hybridFeed";
 import { isMarketOpen } from "./market/hours";
 import { isKrx, type FeedStatus, type Quote } from "./market/types";
-import { ALARM_LINES, bandMood, moodLines, pickFrom, pickLine, type AlarmReason, type MoodKey } from "./ticky/moods";
+import { GUIDE_LINES, ALARM_LINES, bandMood, moodLines, pickFrom, pickLine, type AlarmReason, type MoodKey } from "./ticky/moods";
 import { detectTrend, TREND_LINES, type Trend } from "./ticky/trend";
 import { nearestScale, useDockHeight, useTextScale, useTickyScale } from "./scale";
 import { useRoaming } from "./roam";
@@ -23,6 +23,8 @@ import "./App.css";
 const SHOCK_PCT = 2, SHOCK_MS = 3000;
 // a teased Ticky wears its plaster this long
 const PLASTER_MS = 10 * 60_000;
+// shown when the watchlist is empty (no stock behind it)
+const GUIDE = { symbol: "__guide", name: "티키" };
 // 비상: siren + megaphone for 8 s, on any of
 //   - a move of 3% or more within ~5 minutes (not again for 5 minutes)
 //   - first crossing of ±10% for the day (entering 폭등 / 폭락)
@@ -260,6 +262,13 @@ export default function App() {
   };
   const bridge: Bridge = { snapshot, set: apply };
 
+  // first run: open the market picker's window; once a market is picked (the list arrives here),
+  // close it from this side too, so it never lingers
+  useEffect(() => {
+    if (!inTauri()) return;
+    invoke(watch.ready ? "close_welcome" : "open_welcome").catch(() => {});
+  }, [watch.ready]);
+
   // ---- 괴롭히기 ------------------------------------------------------------------------------
   // the Ticky goes off to a window of its own in the middle of the screen; meanwhile it's hidden
   // here. Teased at all → it comes back wearing a plaster for a while.
@@ -290,7 +299,8 @@ export default function App() {
 
   return (
     <main className="desk">
-      {!watch.ready && <Onboarding onPick={watch.start} />}
+      {/* first run: the market picker opens in the middle of the screen (its own window in the app) */}
+      {!watch.ready && !inTauri() && <Onboarding onPick={watch.start} />}
       {watch.ready && (
         <>
           <Toolbar layout={layout} onLayout={switchLayout} onSettings={openSettings} />
@@ -335,8 +345,9 @@ export default function App() {
                 />
               ) : null;
             })}
-            {!preview && shown.length === 0 && (
-              <p className="empty">＋ 를 눌러 목록에서 띄울 종목을 골라 보세요</p>
+            {/* nothing on the list: a plain grey Ticky walks about and explains how to add stocks */}
+            {!preview && watch.ready && shown.length === 0 && (
+              <Pet key={GUIDE.symbol} item={GUIDE} mood="calm" line={GUIDE_LINES.first} pool={GUIDE_LINES.pool} guide />
             )}
           </div>
         </>

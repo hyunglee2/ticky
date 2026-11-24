@@ -217,6 +217,37 @@ async fn open_tease(app: AppHandle, symbol: String) -> Result<(), String> {
     Ok(())
 }
 
+/// First run: the market picker, in a small transparent window in the middle of the screen
+/// (the Tickies' window is only a strip along the bottom).
+#[tauri::command]
+async fn open_welcome(app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("welcome") {
+        let _ = w.show();
+        let _ = w.set_focus();
+        return Ok(());
+    }
+    tauri::WebviewWindowBuilder::new(&app, "welcome", tauri::WebviewUrl::App("index.html?view=welcome".into()))
+        .title("ticky")
+        .transparent(true)
+        .decorations(false)
+        .shadow(false)
+        .always_on_top(true)
+        .resizable(false)
+        .inner_size(820.0, 320.0) // room for the largest text size
+        .center()
+        .focused(true)
+        .build()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn close_welcome(app: AppHandle) {
+    if let Some(w) = app.get_webview_window("welcome") {
+        let _ = w.destroy();
+    }
+}
+
 #[tauri::command]
 fn close_tease(app: AppHandle) {
     if let Some(w) = app.get_webview_window("tease") {
@@ -242,6 +273,8 @@ pub fn run() {
             open_settings,
             open_tease,
             close_tease,
+            open_welcome,
+            close_welcome,
             yahoo::fetch_yahoo_quotes,
             kis::fetch_kis_quotes,
             kis::kis_status,

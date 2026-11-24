@@ -1,5 +1,8 @@
+import { invoke } from "@tauri-apps/api/core";
+import { inTauri } from "../clickThrough";
+import { useTextScale } from "../scale";
 import { tickySvg } from "../ticky/art";
-import type { StarterMarket } from "../watchlist";
+import { useWatchlist, type StarterMarket } from "../watchlist";
 
 interface Props {
   onPick: (market: StarterMarket) => void;
@@ -32,5 +35,23 @@ export function Onboarding({ onPick }: Props) {
         <button type="button" className="onboard-skip" onClick={() => onPick("both")}>건너뛰기</button>
       </div>
     </div>
+  );
+}
+
+/**
+ * The first-run picker's own window (the middle of the screen). The pick reaches the Tickies'
+ * window through the shared watchlist; then this window goes away.
+ */
+export function Welcome() {
+  useTextScale();
+  const watch = useWatchlist();
+  return (
+    <Onboarding
+      onPick={(m) => {
+        watch.start(m);
+        // give the new list a moment to reach the other window before this one closes
+        window.setTimeout(() => { if (inTauri()) invoke("close_welcome").catch(() => {}); }, 300);
+      }}
+    />
   );
 }

@@ -23,6 +23,8 @@ interface Props {
   away?: boolean;
   /** was teased a while ago: wears a plaster */
   bandage?: boolean;
+  /** the guide shown while the list is empty: no stock, so no price on its tag */
+  guide?: boolean;
 }
 
 // short badge next to the % on the name tag, only outside regular hours
@@ -131,7 +133,7 @@ function useChatter(moodLine: string, pool: string[], hint: string[] | undefined
   return { said: hushed && !said?.react ? null : said, interrupt: (text: string) => interruptRef.current(text) };
 }
 
-export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commute, onTease, away, bandage }: Props) {
+export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commute, onTease, away, bandage, guide }: Props) {
   const [hover, setHover] = useState(false);
   const [menu, setMenu] = useState<null | "open" | "confirm">(null);
   const [stay, setStay] = useState(false);     // 가만히 있기: doesn't wander (can still be carried)
@@ -219,7 +221,7 @@ export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commu
 
   const tag = (
     <div className="tag">
-      {name} <b className={tone}>{quote && mood !== "offline" ? `${signed(pct)}%` : "—"}</b>
+      {name}{!guide && <> <b className={tone}>{quote && mood !== "offline" ? `${signed(pct)}%` : "—"}</b></>}
       {quote?.session && SESSION_BADGE[quote.session] && mood !== "offline" && (
         <span className="session">{SESSION_BADGE[quote.session]}</span>
       )}

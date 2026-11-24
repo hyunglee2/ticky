@@ -140,6 +140,20 @@ export const TEASE_LINES = {
   regrow:    ["다시 났다!", "심지 재생 완료", "휴 살았다"],
 };
 
+/** the grey guide Ticky that shows up while the watchlist is empty */
+export const GUIDE_LINES = {
+  first: "관심 종목이 비어 있어!",
+  pool: [
+    "오른쪽 아래 티키를 눌러 봐",
+    "설정 → 관심 종목에서 추가해 줘",
+    "보고 싶은 종목 있어?",
+    "종목을 넣으면 친구들이 나와",
+    "심심해... 종목 추가해 줘",
+    "삼성전자? 테슬라? 아무거나 좋아",
+    "최대 5개까지 데려올 수 있어",
+  ],
+};
+
 export const REACT_LINES = {
   grab:     ["으앗", "내려줘!", "높다...", "흔들지 마", "놔줘!", "무서워", "나 고소공포증 있음", "괴롭히지 마", "이게 뭐야"], // startled
   grabHappy: ["우와 높다!", "어디 데려가?", "히히", "나 들렸어!"],                                                       // pleased
