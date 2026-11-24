@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { headTop, tickySvg, type Face } from "../ticky/art";
 import type { Outfit } from "../ticky/outfit";
+import { useDrawnTop } from "../ticky/measure";
 import { moodName, moodTone, pickFrom, REACT_LINES, TEASE_LINES, type MoodKey, type Tone } from "../ticky/moods";
 import type { TickyEvent } from "../roam";
 import { displayName, fullName, type Quote, type Session, type WatchItem } from "../market/types";
@@ -156,6 +157,8 @@ export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commu
   // markup only changes with the mood, so animations aren't restarted on every price tick
   const svg = useMemo(() => tickySvg(mood, tone, `${name} ${moodName(mood)}`, face, undefined, bandage, outfit), [mood, tone, name, face, bandage, outfit]);
   const { said, interrupt } = useChatter(line, pool, hint, mood === "alarm", hover || menu !== null);
+  const artRef = useRef<HTMLDivElement>(null);
+  const drawn = useDrawnTop(artRef, svg);
 
   // back from being teased: says something about it
   const wasAway = useRef(false);
@@ -236,7 +239,8 @@ export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commu
     </div>
   );
   // distance from the bottom of the drawing up to the top of the head, in SVG units
-  const head = { "--head": 140 - headTop(mood, outfit) } as CSSProperties;
+  // (measured from the drawing, so it clears any hat or costume; the estimate covers the first paint)
+  const head = { "--head": 140 - Math.min(headTop(mood, outfit), drawn ?? Infinity) } as CSSProperties;
 
   return (
     <div
@@ -285,7 +289,7 @@ export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commu
       <div className="above">
         {said && <div key={said.id} className="bubble">{said.text}</div>}
       </div>
-      <div className="art" dangerouslySetInnerHTML={{ __html: svg }} />
+      <div ref={artRef} className="art" dangerouslySetInnerHTML={{ __html: svg }} />
       </div>
       {/* the name tag sits right under the feet, like the ground the Ticky stands on */}
       {tag}

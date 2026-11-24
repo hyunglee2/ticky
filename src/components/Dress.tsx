@@ -6,6 +6,7 @@ import { EV, on, send, type Snapshot } from "../sync";
 import { tickySvg } from "../ticky/art";
 import { moodName, moodTone, pickFrom, type MoodKey } from "../ticky/moods";
 import { CATALOG, itemIcon, type Outfit, type Slot } from "../ticky/outfit";
+import { useDrawnTop } from "../ticky/measure";
 import { useWatchlist } from "../watchlist";
 
 // 꾸미기: the Ticky big in the middle of the screen (the same see-through window as 괴롭히기),
@@ -36,8 +37,12 @@ export function Dress({ symbol, bridge, onDone }: { symbol: string; bridge?: Sna
   const mood: MoodKey = baseMood === "alarm" || baseMood === "shock" ? "good" : baseMood;
   const tone = moodTone(baseMood, quote?.changePct ?? 0);
   const name = entry ? displayName(entry, quote) : symbol;
+  const dressArt = useRef<HTMLDivElement>(null);
   const svg = useMemo(() => tickySvg(mood, tone, `${name} ${moodName(mood)}`, undefined, undefined, false, outfit),
     [mood, tone, name, outfit]);
+  // the bubble floats just above the top of whatever is drawn (hat, costume, star…)
+  const top = useDrawnTop(dressArt, svg);
+  const bubbleAt = top === null ? undefined : { top: "auto", bottom: `${350 - top * 2.5 + 4}px` };
 
   // ---- talking, a little hop on each change ---------------------------------------------------
   const [tab, setTab] = useState<Slot>("head");
@@ -101,9 +106,9 @@ export function Dress({ symbol, bridge, onDone }: { symbol: string; bridge?: Sna
     >
       <div className="tease-stage">
         <div className="tease-ticky">
-          <div className="tease-bubble-wrap">{said && <div key={said.id} className="bubble tease-bubble">{said.text}</div>}</div>
+          <div className="tease-bubble-wrap" style={bubbleAt}>{said && <div key={said.id} className="bubble tease-bubble">{said.text}</div>}</div>
           <div className="tease-body">
-            <div className="tease-art" data-bonk={hop} dangerouslySetInnerHTML={{ __html: svg }} />
+            <div ref={dressArt} className="tease-art" data-bonk={hop} dangerouslySetInnerHTML={{ __html: svg }} />
           </div>
         </div>
         <div className="tease-name">{name}</div>

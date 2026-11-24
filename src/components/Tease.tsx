@@ -5,6 +5,7 @@ import { displayName } from "../market/types";
 import { EV, on, send, type Snapshot } from "../sync";
 import { tickySvg, type Face } from "../ticky/art";
 import { moodName, moodTone, pickFrom, TEASE_LINES, type MoodKey } from "../ticky/moods";
+import { useDrawnTop } from "../ticky/measure";
 import { useWatchlist, type WatchEntry } from "../watchlist";
 
 // 괴롭히기: one Ticky, big, in the middle of a transparent window over the whole screen.
@@ -242,6 +243,9 @@ export function Tease({ symbol, bridge, onDone }: { symbol: string; bridge?: Sna
   // ---- where things are --------------------------------------------------------------------------
   const body = useRef<HTMLDivElement>(null);
   const art = useRef<HTMLDivElement>(null);
+  // the bubble floats just above the top of whatever is drawn (hat, costume, star…)
+  const top = useDrawnTop(art, svg);
+  const bubbleAt = top === null ? undefined : { top: "auto", bottom: `${350 - top * 2.5 + 4}px` };
   /** the candle itself (not the wick, feet or the empty room around it) */
   const bodyBox = () => {
     const shape = art.current?.querySelector(".upper > rect, .upper > path");
@@ -468,7 +472,7 @@ export function Tease({ symbol, bridge, onDone }: { symbol: string; bridge?: Sna
     >
       <div className="tease-stage">
         <div className="tease-ticky" onPointerDown={down} onPointerUp={up} onPointerCancel={up}>
-          <div className="tease-bubble-wrap">{said && <div key={said.id} className="bubble tease-bubble">{said.text}</div>}</div>
+          <div className="tease-bubble-wrap" style={bubbleAt}>{said && <div key={said.id} className="bubble tease-bubble">{said.text}</div>}</div>
           <div ref={body} className="tease-body">
             <div ref={art} className="tease-art" data-bonk={bonk} data-wick={wick} dangerouslySetInnerHTML={{ __html: svg }} />
             {marks.map((m) => <span key={m.id} className="arrow-mark" style={{ left: m.x, top: m.y }} />)}
