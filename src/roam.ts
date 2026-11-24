@@ -19,6 +19,7 @@ const SPEED: Record<MoodKey, number> = {
   alarm: 95, // scurries around sounding the alarm
 };
 
+const NIGHT_PACE = 0.5;    // a US Ticky resting in Korean daytime strolls at this share of its pace
 const EDGE = 16;          // keep clear of the screen edges (room for the hover card too)
 const UNITS_TO_PX = 88 / 120; // the Ticky's SVG is 120 units wide, drawn 88px wide at normal size
 const TOOLBAR_GAP = 12;   // and of the toolbar in the bottom-right corner
@@ -336,7 +337,7 @@ export function useRoaming(moods: Record<string, MoodKey>) {
           const stay = el.dataset.stay === "1";
           const dizzy = now < w.dizzyUntil;
           // small Tickies walk a bit slower, but not in proportion (or "작게" looks sluggish)
-          const speed = SPEED[moodsRef.current[symbol] ?? "calm"] * Math.sqrt(scale);
+          const speed = SPEED[moodsRef.current[symbol] ?? "calm"] * Math.sqrt(scale) * (el.dataset.night ? NIGHT_PACE : 1);
           const held = speed === 0 || stay || dizzy || !!w.rightAt || el.matches(":hover");
           if (held) {
             w.walking = false;
@@ -419,7 +420,7 @@ export function useRoaming(moods: Record<string, MoodKey>) {
       for (const { el, w } of placed) {
         // match the stepping to the ground speed: quicker, longer steps when excited,
         // slow short shuffles when sad. The planted foot travels a full stride per half cycle.
-        const base = SPEED[moodsRef.current[el.dataset.symbol!] ?? "calm"];
+        const base = SPEED[moodsRef.current[el.dataset.symbol!] ?? "calm"] * (el.dataset.night ? NIGHT_PACE : 1);
         if (base > 0) {
           const step = Math.min(0.8, Math.max(0.25, 0.45 * Math.sqrt(22 / base)));
           const stride = (base * step) / 2 / UNITS_TO_PX; // in SVG units at normal size

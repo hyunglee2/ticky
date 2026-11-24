@@ -22,7 +22,7 @@ const LAYOUTS: { value: Layout; label: string; hint: string }[] = [
 ];
 
 const LIVE_TEXT: Record<LiveStatus, string> = {
-  off: "꺼짐",
+  off: "", // idle: no stock of its market on the list (the grey dot says enough)
   connecting: "연결 중…",
   ok: "",
   "rate-limit": "잠시 쉬는 중",
@@ -135,12 +135,19 @@ export function Settings({ bridge, onClose }: { bridge?: Bridge; onClose?: () =>
         {page === "sources" && (
           <>
             <h2>시세 연결</h2>
+            <div className="set-lead">
+              <p><b>국내·미국 정규장 시세</b>는 설정 없이 티키가 알려줘요. 미국은 장전·장후 시세도 알려줄 수 있어요.</p>
+              <p><b>한국 낮 시간(오전 10시~저녁 6시) 미국 시세</b>는 한국투자증권 앱키를 연결해야 받아올 수 있어요.</p>
+            </div>
             {inTauri() ? (
               <div className="set-sec">
-                <Source name="한국 · 네이버" every="7초" status={snap.status.kr} />
-                <Source name="미국 · Yahoo" every="15초" status={snap.status.us} />
-                <KisBox status={snap.status.day} />
-                <p className="set-hint">Yahoo는 한국 낮 시간(뉴욕 밤 8시~새벽 4시)에 미국 시세가 없어요. 이 시간엔 한국투자증권 앱키를 연결하면 주간거래 시세를 받아요.</p>
+                <Source name="한국 · 네이버" desc="국내 종목 · 연결 필요 없음 · 정규장과 시간외" every="7초" status={snap.status.kr} />
+                <Source name="미국 · Yahoo" desc="미국 종목 · 연결 필요 없음 · 한국 시간 저녁 6시~아침 10시" every="15초" status={snap.status.us} />
+                <KisBox status={snap.status.day} desc="미국 종목 · 한국 시간 오전 10시~저녁 6시 (주간거래) · 내 앱키 필요" />
+                <p className="set-hint">
+                  미국 시간은 겨울 기준이고, 서머타임(3월~11월 초)엔 한 시간씩 빨라져요.
+                  앱키는 한국투자증권 계좌가 있으면 KIS Developers 홈페이지에서 무료로 발급받을 수 있어요.
+                </p>
               </div>
             ) : (
               <p className="set-hint">실제 시세는 데스크톱 앱에서만 받아요.</p>
@@ -164,11 +171,14 @@ function Switch({ on, onChange, label, disabled, sub }: { on: boolean; onChange:
 }
 
 /** One price source: name, how often, and a coloured dot for its connection. */
-function Source({ name, every, status }: { name: string; every: string; status: LiveStatus }) {
+function Source({ name, desc, every, status }: { name: string; desc: string; every: string; status: LiveStatus }) {
   return (
     <div className="src-row">
       <span className={`dot dot-${status}`} aria-hidden="true" />
-      <span className="src-name">{name}</span>
+      <span className="src-text">
+        <span className="src-name">{name}</span>
+        <span className="src-desc">{desc}</span>
+      </span>
       <span className="src-meta">{status === "ok" ? `${every}마다` : LIVE_TEXT[status]}</span>
     </div>
   );

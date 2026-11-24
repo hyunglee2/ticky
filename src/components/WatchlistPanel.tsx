@@ -104,9 +104,13 @@ export function WatchlistPanel({ bare, watch, quotes, moods }: Props) {
             {hits.map((h) => (
               <li key={h.symbol}>
                 <button type="button" disabled={listed.has(h.symbol)} onClick={() => pick(h)}>
-                  <span className="hit-name">{h.name}</span>
-                  <span className="hit-meta">{h.symbol} · {h.exchange}</span>
-                  {listed.has(h.symbol) && <span className="hit-added">추가됨</span>}
+                  <span className="hit-text">
+                    <span className="hit-name">{h.name}</span>
+                    <span className="hit-meta"><b>{h.symbol}</b> · {h.exchange}</span>
+                  </span>
+                  {listed.has(h.symbol)
+                    ? <span className="hit-added">추가됨</span>
+                    : <span className="hit-add" aria-hidden="true">추가</span>}
                 </button>
               </li>
             ))}

@@ -25,6 +25,8 @@ interface Props {
   bandage?: boolean;
   /** the guide shown while the list is empty: no stock, so no price on its tag */
   guide?: boolean;
+  /** US stock in Korean daytime: the price on its tag is last night's; it takes it easy */
+  night?: boolean;
 }
 
 // short badge next to the % on the name tag, only outside regular hours
@@ -133,7 +135,7 @@ function useChatter(moodLine: string, pool: string[], hint: string[] | undefined
   return { said: hushed && !said?.react ? null : said, interrupt: (text: string) => interruptRef.current(text) };
 }
 
-export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commute, onTease, away, bandage, guide }: Props) {
+export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commute, onTease, away, bandage, guide, night }: Props) {
   const [hover, setHover] = useState(false);
   const [menu, setMenu] = useState<null | "open" | "confirm">(null);
   const [stay, setStay] = useState(false);     // 가만히 있기: doesn't wander (can still be carried)
@@ -222,9 +224,10 @@ export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commu
   const tag = (
     <div className="tag">
       {name}{!guide && <> <b className={tone}>{quote && mood !== "offline" ? `${signed(pct)}%` : "—"}</b></>}
-      {quote?.session && SESSION_BADGE[quote.session] && mood !== "offline" && (
-        <span className="session">{SESSION_BADGE[quote.session]}</span>
-      )}
+      {night && mood !== "offline" ? <span className="session">어젯밤</span>
+        : quote?.session && SESSION_BADGE[quote.session] && mood !== "offline" && (
+          <span className="session">{SESSION_BADGE[quote.session]}</span>
+        )}
     </div>
   );
   // distance from the bottom of the drawing up to the top of the head, in SVG units
@@ -242,6 +245,7 @@ export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commu
       data-angry={angry ? "1" : undefined}
       data-poke={poke}
       data-away={away ? "1" : undefined}
+      data-night={night ? "1" : undefined}
       onContextMenu={(e) => { e.preventDefault(); setMenu("open"); }}
       style={pinX !== undefined ? { transform: `translateX(${pinX}px)` } : undefined}
       onMouseEnter={() => setHover(true)}

@@ -16,7 +16,7 @@ const reason = (e: unknown) => {
  * One row like the other price sources; "연결" opens a small form. The key goes straight to
  * the Rust side, which keeps it in Windows Credential Manager.
  */
-export function KisBox({ status }: { status: LiveStatus }) {
+export function KisBox({ status, desc }: { status: LiveStatus; desc: string }) {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [form, setForm] = useState(false);
   const [appkey, setAppkey] = useState("");
@@ -54,21 +54,40 @@ export function KisBox({ status }: { status: LiveStatus }) {
     <>
       <div className="src-row">
         <span className={`dot dot-${dot}`} aria-hidden="true" />
-        <span className="src-name" title="한국 낮 시간(뉴욕 밤 8시~새벽 4시) 미국 시세">미국 주간 · 한국투자증권</span>
+        <span className="src-text">
+          <span className="src-name">미국 주간 · 한국투자증권</span>
+          <span className="src-desc">{desc}</span>
+        </span>
         {connected ? (
           <button type="button" className="src-btn" onClick={disconnect}>연결 끊기</button>
-        ) : (
-          <button type="button" className="src-btn" onClick={() => setForm(!form)}>{form ? "닫기" : "연결"}</button>
+        ) : !form && (
+          <button type="button" className="src-btn" onClick={() => setForm(true)}>연결 필요</button>
         )}
       </div>
       {!connected && form && (
         <form className="kis-form" onSubmit={(e) => { e.preventDefault(); if (!busy) connect(); }}>
-          <input value={appkey} onChange={(e) => setAppkey(e.target.value)} placeholder="App Key" autoComplete="off" spellCheck={false} autoFocus />
-          <input value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="App Secret" type="password" autoComplete="off" />
+          <p className="kis-title">한국투자증권 앱키 받는 법</p>
+          <ol className="kis-steps">
+            <li>한국투자증권 계좌가 필요해요. 없다면 한국투자 앱에서 비대면으로 만들 수 있어요.</li>
+            <li>
+              KIS Developers에서 Open API 서비스를 신청해요.{" "}
+              <button type="button" className="kis-link" onClick={() => invoke("open_kis_portal").catch(() => {})}>KIS Developers 열기</button>
+            </li>
+            <li>신청이 끝나면 나오는 <b>App Key</b>와 <b>App Secret</b>을 아래에 붙여 넣어요.</li>
+          </ol>
+          <label className="kis-field">
+            <span>App Key</span>
+            <input value={appkey} onChange={(e) => setAppkey(e.target.value)} autoComplete="off" spellCheck={false} autoFocus />
+          </label>
+          <label className="kis-field">
+            <span>App Secret</span>
+            <input value={secret} onChange={(e) => setSecret(e.target.value)} type="password" autoComplete="off" />
+          </label>
           {error && <p className="notice">{error}</p>}
-          <div className="kis-foot">
-            <span className="set-hint">이 PC의 자격 증명 관리자에만 저장돼요</span>
-            <button type="submit" className="src-btn solid" disabled={busy || !appkey.trim() || !secret.trim()}>{busy ? "확인 중…" : "연결"}</button>
+          <p className="set-hint">키는 이 PC에만 저장되고(Windows 자격 증명 관리자), 시세를 받을 때 한국투자증권에만 쓰여요.</p>
+          <div className="kis-actions">
+            <button type="button" className="src-btn" onClick={() => { setForm(false); setError(""); }}>취소</button>
+            <button type="submit" className="src-btn solid" disabled={busy || !appkey.trim() || !secret.trim()}>{busy ? "확인 중…" : "연결하기"}</button>
           </div>
         </form>
       )}

@@ -5,9 +5,9 @@ import { Onboarding } from "./components/Onboarding";
 import { StatePreview } from "./components/StatePreview";
 import { TickerStack } from "./components/TickerStack";
 import { createHybridFeed } from "./market/hybridFeed";
-import { isMarketOpen } from "./market/hours";
+import { isMarketOpen, isUsDayMarket } from "./market/hours";
 import { isKrx, type FeedStatus, type Quote } from "./market/types";
-import { GUIDE_LINES, ALARM_LINES, bandMood, moodLines, pickFrom, pickLine, type AlarmReason, type MoodKey } from "./ticky/moods";
+import { GUIDE_LINES, NIGHT_LINES, nightReport, moodTone, ALARM_LINES, bandMood, moodLines, pickFrom, pickLine, type AlarmReason, type MoodKey } from "./ticky/moods";
 import { detectTrend, TREND_LINES, type Trend } from "./ticky/trend";
 import { nearestScale, useDockHeight, useTextScale, useTickyScale } from "./scale";
 import { useRoaming } from "./roam";
@@ -63,12 +63,14 @@ interface PetState {
   trend: Trend | null; // chart flow over the last ~10 minutes, for situational lines
   trendAt: number;     // when a chart-flow line last spoke up on its own
   jumpAlarmAt: number; // when the last 급변 alarm fired
+  /** US stock while New York sleeps (daytime in Korea) with no 주간거래 prices: last night's price */
+  night: boolean;
 }
 
 const sameState = (a: PetState | undefined, b: PetState) =>
   !!a && a.band === b.band && a.mood === b.mood && a.line === b.line && a.shockUntil === b.shockUntil &&
   a.alarmUntil === b.alarmUntil &&
-  a.alarmReason === b.alarmReason && a.trend === b.trend && a.trendAt === b.trendAt;
+  a.alarmReason === b.alarmReason && a.trend === b.trend && a.trendAt === b.trendAt && a.night === b.night;
 
 export type { Layout };
 
@@ -160,13 +162,16 @@ export default function App() {
         next[symbol] = {
           band: old?.band ?? "calm", mood: "offline", line, shockUntil: 0, alarmUntil: 0,
           trend: null, trendAt: old?.trendAt ?? 0,
-          jumpAlarmAt: old?.jumpAlarmAt ?? 0,
+          jumpAlarmAt: old?.jumpAlarmAt ?? 0, night: false,
         };
         if (!sameState(old, next[symbol])) changed = true;
         continue;
       }
       if (!q) continue;
       const band = bandMood(q.changePct, old?.band);
+      // a US stock in Korean daytime (New York 20:00–04:00) without 주간거래 prices from KIS:
+      // the price is last night's, so nothing can suddenly move; it reports last night and rests
+      const night = q.source === "live" && !isKrx(symbol) && isUsDayMarket(new Date(now)) && q.session !== "day";
 
       // movement over the last ~5 minutes
       const h = q.history;
@@ -177,19 +182,19 @@ export default function App() {
       const last = r.length - 1;
       const move = last < 2 ? 0 : (steady(r, last - 1) / steady(r, Math.max(1, last - n)) - 1) * 100;
 
-      let shockUntil = old?.shockUntil ?? 0;
-      if (Math.abs(move) >= SHOCK_PCT && now >= shockUntil + SHOCK_MS) shockUntil = now + SHOCK_MS;
+      let shockUntil = night ? 0 : old?.shockUntil ?? 0;
+      if (!night && Math.abs(move) >= SHOCK_PCT && now >= shockUntil + SHOCK_MS) shockUntil = now + SHOCK_MS;
 
       // 비상 triggers
-      let alarmUntil = old?.alarmUntil ?? 0;
+      let alarmUntil = night ? 0 : old?.alarmUntil ?? 0;
       let fired: AlarmReason | undefined;
       let jumpAlarmAt = old?.jumpAlarmAt ?? 0;
       const fire = (reason: AlarmReason) => { alarmUntil = now + ALARM_MS; fired = reason; };
-      if (Math.abs(move) >= ALARM_PCT && now - jumpAlarmAt >= JUMP_ALARM_GAP) {
+      if (!night && Math.abs(move) >= ALARM_PCT && now - jumpAlarmAt >= JUMP_ALARM_GAP) {
         jumpAlarmAt = now;
         fire(move > 0 ? "jumpUp" : "jumpDown");
       }
-      if (old && old.band !== band && (band === "boom" || band === "blast")) fire(band);
+      if (!night && old && old.band !== band && (band === "boom" || band === "blast")) fire(band);
       // live quotes know their session (pre-market and after-hours count as awake);
       // fake ones fall back to the exchange's regular hours
       const closed = q.session
@@ -203,20 +208,22 @@ export default function App() {
       const alarmReason = fired ?? (mood === "alarm" ? old?.alarmReason : undefined);
 
       // chart flow (only for the plain % moods): compares with earlier prices, not just today's %
-      const trend = mood === band ? detectTrend(h, q.prevClose, n * 2) : null;
+      const trend = mood === band && !night ? detectTrend(h, q.prevClose, n * 2) : null;
       let trendAt = old?.trendAt ?? 0;
 
       // what to say first: a fresh alarm says why; a new mood picks a new line;
       // a new chart flow speaks up (not too often); otherwise keep the current line
       let line: string;
       if (fired) line = ALARM_LINES[fired][0];
-      else if (!old || old.mood !== mood) line = pickLine(mood, old?.line);
+      // New York just went to sleep (or the app just started in Korean daytime): last night's report
+      else if (night && mood !== "sleep") line = old?.night && old.mood === mood ? old.line : nightReport(moodTone(band, q.changePct), q.changePct);
+      else if (!old || old.mood !== mood || old.night) line = pickLine(mood, old?.line);
       else if (trend && trend !== old.trend && now - trendAt >= TREND_GAP) {
         line = pickFrom(TREND_LINES[trend], old.line);
         trendAt = now;
       } else line = old.line;
       next[symbol] = {
-        band, mood, line, shockUntil, alarmUntil, alarmReason, trend, trendAt, jumpAlarmAt,
+        band, mood, line, shockUntil, alarmUntil, alarmReason, trend, trendAt, jumpAlarmAt, night,
       };
       if (!sameState(old, next[symbol])) changed = true;
     }
@@ -335,7 +342,10 @@ export default function App() {
                   quote={quotes[item.symbol]}
                   mood={p.mood}
                   line={p.line}
-                  pool={p.mood === "alarm" && p.alarmReason ? [ALARM_LINES[p.alarmReason][1]] : moodLines(p.mood)}
+                  pool={p.mood === "alarm" && p.alarmReason ? [ALARM_LINES[p.alarmReason][1]]
+                    : p.night && p.mood !== "sleep" ? NIGHT_LINES.rest[moodTone(p.band, quotes[item.symbol]?.changePct ?? 0)]
+                    : moodLines(p.mood)}
+                  night={p.night}
                   hint={p.trend ? TREND_LINES[p.trend] : undefined}
                   onDelete={() => watch.remove(item.symbol)}
                   commute={commute ?? undefined}

@@ -140,6 +140,29 @@ export const TEASE_LINES = {
   regrow:    ["다시 났다!", "심지 재생 완료", "휴 살았다"],
 };
 
+/**
+ * 미국 종목, 한국 낮 시간 (New York is asleep, no 주간거래 prices without a KIS key):
+ * the price is last night's. It reports how last night ended once ({p} = the %), then takes it easy.
+ */
+export const NIGHT_LINES: { report: Record<Tone, string[]>; rest: Record<Tone, string[]> } = {
+  report: {
+    up:   ["어젯밤 {p} 마감!", "어젯밤 미장 {p}로 끝났어", "어젯밤 {p}! 잘했지?"],
+    down: ["어젯밤 {p}... 털렸어", "어젯밤 {p}로 끝났어...", "어젯밤은 {p}... 미안"],
+    flat: ["어젯밤은 {p}로 조용히 끝났어", "어젯밤 {p}, 별일 없었어"],
+  },
+  rest: {
+    up:   ["어젯밤 잘했지?", "오늘 밤에 또 보자", "미국은 지금 밤이야", "자면서도 웃음이 나", "좋은 꿈 꾸는 중"],
+    down: ["어젯밤 얘기는 하지 말자", "오늘 밤엔 다를 거야", "미국은 지금 밤이야", "밤새 반성 중", "자고 일어나면 괜찮겠지"],
+    flat: ["미국은 지금 밤이야", "오늘 밤에 보자", "쉬는 중~", "미장은 저녁에 다시 열려"],
+  },
+};
+
+/** the report line with last night's % filled in */
+export function nightReport(tone: Tone, pct: number): string {
+  const p = `${pct > 0 ? "+" : pct < 0 ? "−" : ""}${Math.abs(pct).toFixed(2)}%`;
+  return pickFrom(NIGHT_LINES.report[tone]).replace("{p}", p);
+}
+
 /** the grey guide Ticky that shows up while the watchlist is empty */
 export const GUIDE_LINES = {
   first: "관심 종목이 비어 있어!",

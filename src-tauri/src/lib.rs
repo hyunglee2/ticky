@@ -255,6 +255,15 @@ fn close_tease(app: AppHandle) {
     }
 }
 
+/// Open the KIS Developers portal (where the app key is issued) in the default browser.
+#[tauri::command]
+fn open_kis_portal() {
+    #[cfg(windows)]
+    let _ = std::process::Command::new("rundll32")
+        .args(["url.dll,FileProtocolHandler", "https://apiportal.koreainvestment.com"])
+        .spawn();
+}
+
 /// Called by the UI whenever what's on screen needs a different height (cards, panels, size setting).
 #[tauri::command]
 fn dock_bottom(app: AppHandle, height: f64) {
@@ -274,6 +283,7 @@ pub fn run() {
             open_tease,
             close_tease,
             open_welcome,
+            open_kis_portal,
             close_welcome,
             yahoo::fetch_yahoo_quotes,
             kis::fetch_kis_quotes,
