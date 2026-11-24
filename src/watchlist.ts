@@ -5,10 +5,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { EV, on, send } from "./sync";
 import type { WatchItem } from "./market/types";
+import type { Outfit } from "./ticky/outfit";
 
 export const MAX_LIST = 5;
 
-export type WatchEntry = WatchItem;
+/** a stock on the list, and what its Ticky is wearing (꾸미기) */
+export type WatchEntry = WatchItem & { outfit?: Outfit };
 
 export type StarterMarket = "kr" | "us" | "both";
 
@@ -41,7 +43,7 @@ function read(): WatchEntry[] | null {
       // older lists could hold 20 with only some shown: keep the shown ones first, up to the limit
       const saved = JSON.parse(raw) as (WatchEntry & { shown?: boolean })[];
       const ordered = [...saved.filter((e) => e.shown !== false), ...saved.filter((e) => e.shown === false)];
-      return ordered.slice(0, MAX_LIST).map((e) => ({ symbol: e.symbol, name: e.name }));
+      return ordered.slice(0, MAX_LIST).map((e) => ({ symbol: e.symbol, name: e.name, ...(e.outfit ? { outfit: e.outfit } : {}) }));
     }
     const old = localStorage.getItem(OLD_KEY);
     if (old) return (JSON.parse(old) as WatchItem[]).slice(0, MAX_LIST).map((it) => ({ symbol: it.symbol, name: it.name }));
@@ -100,6 +102,12 @@ export function useWatchlist() {
     setEntries(next);
   }, [list]);
 
+  /** dress a Ticky (an empty outfit takes everything off) */
+  const setOutfit = useCallback((symbol: string, outfit: Outfit) => {
+    const clean = Object.fromEntries(Object.entries(outfit).filter(([, v]) => v)) as Outfit;
+    setEntries(list.map((e) => (e.symbol === symbol ? { ...e, outfit: Object.keys(clean).length ? clean : undefined } : e)));
+  }, [list]);
+
   return {
     ready: entries !== null,
     entries: list,
@@ -108,6 +116,7 @@ export function useWatchlist() {
     add,
     remove,
     move,
+    setOutfit,
   };
 }
 

@@ -182,7 +182,7 @@ async fn open_settings(app: AppHandle) -> Result<(), String> {
 /// one Ticky shows up big in the middle. Replaces any one already open. When it's gone,
 /// "ticky:tease-closed" tells the Tickies' window to bring that Ticky back.
 #[tauri::command]
-async fn open_tease(app: AppHandle, symbol: String) -> Result<(), String> {
+async fn open_tease(app: AppHandle, symbol: String, mode: Option<String>) -> Result<(), String> {
     if let Some(w) = app.get_webview_window("tease") {
         let _ = w.destroy();
     }
@@ -194,7 +194,9 @@ async fn open_tease(app: AppHandle, symbol: String) -> Result<(), String> {
     let scale = monitor.scale_factor();
     // symbols are plain tickers / codes; keep it that way in the URL
     let symbol: String = symbol.chars().filter(|c| c.is_ascii_alphanumeric() || ".-^=".contains(*c)).collect();
-    let url = format!("index.html?view=tease&s={symbol}");
+    // the same window hosts 꾸미기 (dress-up)
+    let view = if mode.as_deref() == Some("dress") { "dress" } else { "tease" };
+    let url = format!("index.html?view={view}&s={symbol}");
     let w = tauri::WebviewWindowBuilder::new(&app, "tease", tauri::WebviewUrl::App(url.into()))
         .title("ticky")
         .transparent(true)

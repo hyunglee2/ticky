@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { headTop, tickySvg, type Face } from "../ticky/art";
+import type { Outfit } from "../ticky/outfit";
 import { moodName, moodTone, pickFrom, REACT_LINES, TEASE_LINES, type MoodKey, type Tone } from "../ticky/moods";
 import type { TickyEvent } from "../roam";
 import { displayName, fullName, type Quote, type Session, type WatchItem } from "../market/types";
@@ -27,6 +28,10 @@ interface Props {
   guide?: boolean;
   /** US stock in Korean daytime: the price on its tag is last night's; it takes it easy */
   night?: boolean;
+  /** 꾸미기: open the dress-up screen */
+  onDress?: () => void;
+  /** what it's wearing */
+  outfit?: Outfit;
 }
 
 // short badge next to the % on the name tag, only outside regular hours
@@ -135,7 +140,7 @@ function useChatter(moodLine: string, pool: string[], hint: string[] | undefined
   return { said: hushed && !said?.react ? null : said, interrupt: (text: string) => interruptRef.current(text) };
 }
 
-export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commute, onTease, away, bandage, guide, night }: Props) {
+export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commute, onTease, away, bandage, guide, night, onDress, outfit }: Props) {
   const [hover, setHover] = useState(false);
   const [menu, setMenu] = useState<null | "open" | "confirm">(null);
   const [stay, setStay] = useState(false);     // 가만히 있기: doesn't wander (can still be carried)
@@ -149,7 +154,7 @@ export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commu
   const name = displayName(item, quote);
   const tone = moodTone(mood, pct);
   // markup only changes with the mood, so animations aren't restarted on every price tick
-  const svg = useMemo(() => tickySvg(mood, tone, `${name} ${moodName(mood)}`, face, undefined, bandage), [mood, tone, name, face, bandage]);
+  const svg = useMemo(() => tickySvg(mood, tone, `${name} ${moodName(mood)}`, face, undefined, bandage, outfit), [mood, tone, name, face, bandage, outfit]);
   const { said, interrupt } = useChatter(line, pool, hint, mood === "alarm", hover || menu !== null);
 
   // back from being teased: says something about it
@@ -231,7 +236,7 @@ export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commu
     </div>
   );
   // distance from the bottom of the drawing up to the top of the head, in SVG units
-  const head = { "--head": 140 - headTop(mood) } as CSSProperties;
+  const head = { "--head": 140 - headTop(mood, outfit) } as CSSProperties;
 
   return (
     <div
@@ -257,6 +262,9 @@ export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commu
           <button type="button" role="menuitem" onClick={() => { setStay((s) => !s); setMenu(null); }}>
             {stay ? "다시 돌아다니기" : "가만히 있기"}
           </button>
+          {onDress && (
+            <button type="button" role="menuitem" onClick={() => { setMenu(null); onDress(); }}>꾸미기</button>
+          )}
           {onTease && mood !== "offline" && (
             <button type="button" role="menuitem" onClick={() => { setMenu(null); onTease(); }}>괴롭히기</button>
           )}

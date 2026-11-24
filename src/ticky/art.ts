@@ -2,6 +2,7 @@
 // solid eyelids, black capsule feet, sleep = lids down + drool, happy = smug side-eye.
 // Output is static markup built only from constants in this file (no user text goes in).
 import type { MoodKey, Tone } from "./moods";
+import { drawBody, drawFace, drawHead, drawNeck, headReach, hidesEyes, hidesWick, wickLift, type Outfit } from "./outfit";
 
 const INK = "#1f1f1f";
 const TEAR = "#8cc4ff";
@@ -282,6 +283,22 @@ function faceExtras(face: Face, top: number) {
   }
 }
 
+/** what it's wearing (꾸미기): a costume, then the head, glasses over that, then the neck */
+function dress(o: Outfit | undefined, top: number, ey: number, wide: boolean) {
+  if (!o) return "";
+  const costume = o.body && !wide;
+  // a neck item goes just under the mouth, or under the mask when one covers down to there
+  // (a necktie hangs down, so it starts a little higher on a short candle)
+  const neckY = o.neck === "necktie" ? Math.min(ey + 21, 99)
+    : o.head === "bungeo" && !costume ? Math.min(ey + 38, 116)
+    : Math.min(ey + 24, 108);
+  // glasses go over whatever is on the head (a hat's brim, a mask's window)
+  return (costume ? drawBody(o.body!, top, ey) : "") +
+    (o.head && !costume ? drawHead(o.head, wide ? top - 3 : top, ey) : "") +
+    (o.face ? drawFace(o.face, ey) : "") +
+    (o.neck && !(wide && o.neck === "necktie") ? drawNeck(o.neck, wide ? ey + 21 : neckY) : "");
+}
+
 /** a little crossed plaster on the head, after being teased */
 const BANDAGE = (x: number, y: number) =>
   `<g transform="translate(${x} ${y})">` +
@@ -291,7 +308,8 @@ const BANDAGE = (x: number, y: number) =>
 
 const TEAR_AT = (x: number, y: number) => `<path d="M${x} ${y} q-2.5 6 0 9 q2.5 -3 0 -9z" fill="${TEAR}"/>`;
 
-function body(mood: MoodKey, look: Look, tone: Tone) {
+/** `trim`: start the candle this much lower (under a mask that covers its top, so no corner peeks out) */
+function body(mood: MoodKey, look: Look, tone: Tone, trim = 0, eyes = true) {
   const fill = toneVar(tone);
   const cx = 60, ground = 132, w = 64;
   if (mood === "melt") {
@@ -309,8 +327,7 @@ function body(mood: MoodKey, look: Look, tone: Tone) {
       feet: "",
       art: `<path d="${shape}" fill="${fill}"/>` +
         `<path d="M${cx + 30} ${top + 18} q3 8 0 13 q-3 -5 0 -13z" fill="${fill}"/>` +
-        eye(cx - 7.5, ey, look.eye, tone) + eye(cx + 7.5, ey, look.eye, tone) +
-        TEAR_AT(cx - 10.5, ey + 9) +
+        (eyes ? eye(cx - 7.5, ey, look.eye, tone) + eye(cx + 7.5, ey, look.eye, tone) + TEAR_AT(cx - 10.5, ey + 9) : "") +
         mouth(cx, ey + 15, look.mouth),
     };
   }
@@ -322,9 +339,9 @@ function body(mood: MoodKey, look: Look, tone: Tone) {
       `<rect class="foot foot-l" x="${cx - 16}" y="${ground - 14}" width="11" height="14" rx="5.5" fill="${INK}"/>` +
       `<rect class="foot foot-r" x="${cx + 5}" y="${ground - 14}" width="11" height="14" rx="5.5" fill="${INK}"/>`,
     art:
-      `<rect x="${cx - w / 2}" y="${top}" width="${w}" height="${h}" rx="22" fill="${fill}"/>` +
-      eye(cx - 7.5, ey, look.eye, tone) + eye(cx + 7.5, ey, look.eye, tone) +
-      (mood === "sad" ? TEAR_AT(cx - 10.5, ey + 10) : "") +
+      `<rect x="${cx - w / 2}" y="${top + trim}" width="${w}" height="${h - trim}" rx="22" fill="${fill}"/>` +
+      (eyes ? eye(cx - 7.5, ey, look.eye, tone) + eye(cx + 7.5, ey, look.eye, tone) : "") +
+      (mood === "sad" && eyes ? TEAR_AT(cx - 10.5, ey + 10) : "") +
       mouth(cx, ey + 16, look.mouth),
   };
 }
@@ -333,25 +350,25 @@ function body(mood: MoodKey, look: Look, tone: Tone) {
  * Highest drawn point of the Ticky (top of the wick, spark or smoke), in SVG units
  * (the viewBox is 0..140 tall, feet stand at y=132). Lets the name tag sit right on the head.
  */
-export function headTop(mood: MoodKey): number {
+export function headTop(mood: MoodKey, outfit?: Outfit): number {
   const look = LOOKS[mood];
-  if (mood === "melt") return 86 - 6;
+  if (mood === "melt") return 86 - Math.max(6, headReach(outfit));
   const top = 122 - look.h;
   const reach = { boom: 31, blast: 48, sleep: 30, offline: 14, alarm: 20 } as Partial<Record<MoodKey, number>>;
   const wickReach = look.wick === "none" ? 0
     : look.wick === "perky" ? 22 : look.wick === "frizz" ? 20 : look.wick === "calm" ? 15 : 12;
-  return top - Math.max(wickReach, reach[mood] ?? 0);
+  return top - Math.max(wickReach + wickLift(outfit), reach[mood] ?? 0, headReach(outfit));
 }
 
 /**
  * Full SVG markup for one Ticky. Pass `filterId` to apply the hand-drawn boil wobble;
  * it is off by default because WebView2 rasterises SVG filters at 1x, which makes edges jagged.
  */
-export function tickySvg(mood: MoodKey, tone: Tone, label: string, face?: Face, filterId?: string, bandage = false) {
+export function tickySvg(mood: MoodKey, tone: Tone, label: string, face?: Face, filterId?: string, bandage = false, outfit?: Outfit) {
   const f = face ? FACES[face] : undefined;
   const base = LOOKS[mood];
   const look = f ? { ...base, eye: f.eye, mouth: f.mouth, wick: f.wick ?? base.wick } : base;
-  const b = body(mood, look, tone);
+  const b = body(mood, look, tone, outfit?.head === "bungeo" && !outfit.body ? 12 : 0, !hidesEyes(outfit));
   const wide = mood === "melt";
   return `<svg viewBox="0 0 120 140" role="img" aria-label="${label}" overflow="visible">` +
     `<ellipse cx="60" cy="134" rx="${wide ? 50 : 30}" ry="4" fill="rgba(0,0,0,.10)"/>` +
@@ -359,8 +376,9 @@ export function tickySvg(mood: MoodKey, tone: Tone, label: string, face?: Face, 
     // walking animates these parts separately (App.css: feet step, upper body bobs, wick sways)
     b.feet +
     `<g class="upper">` +
-    (wide ? "" : `<g class="wick">${wick(60, b.top, look.wick)}</g>`) +
-    b.art + (face ? faceExtras(face, b.top) : extras(mood, b.top, look.h)) +
+    (wide || hidesWick(outfit) ? "" : `<g transform="translate(0 ${-wickLift(outfit)})"><g class="wick">${wick(60, b.top, look.wick)}</g></g>`) +
+    b.art + dress(outfit, b.top, wide ? b.top + 18 : b.top + Math.min(30, look.h * 0.38), wide) +
+    (face ? faceExtras(face, b.top) : extras(mood, b.top, look.h)) +
     (bandage ? BANDAGE(wide ? 74 : 80, b.top + (wide ? 6 : 9)) : "") +
     `</g></g></g></svg>`;
 }

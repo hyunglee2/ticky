@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { inTauri } from "../clickThrough";
-import { displayName, type WatchItem } from "../market/types";
+import { displayName } from "../market/types";
 import { EV, on, send, type Snapshot } from "../sync";
 import { tickySvg, type Face } from "../ticky/art";
 import { moodName, moodTone, pickFrom, TEASE_LINES, type MoodKey } from "../ticky/moods";
-import { useWatchlist } from "../watchlist";
+import { useWatchlist, type WatchEntry } from "../watchlist";
 
 // 괴롭히기: one Ticky, big, in the middle of a transparent window over the whole screen.
 // Three toys (buttons in the bar below, or keys 1 2 3):
@@ -116,7 +116,7 @@ export function Tease({ symbol, bridge, onDone }: { symbol: string; bridge?: Sna
   const quote = snap?.quotes[symbol];
   const baseMood: MoodKey = snap?.moods[symbol] ?? "calm";
   const tone = moodTone(baseMood, quote?.changePct ?? 0);
-  const item: WatchItem = watch.entries.find((e) => e.symbol === symbol) ?? { symbol, name: symbol };
+  const item: WatchEntry = watch.entries.find((e) => e.symbol === symbol) ?? { symbol, name: symbol };
   const name = displayName(item, quote);
 
   const [tool, setTool] = useState<Tool>("hammer");
@@ -144,8 +144,8 @@ export function Tease({ symbol, bridge, onDone }: { symbol: string; bridge?: Sna
   const stageFace: Face | undefined = stage === 1 ? "sulk" : stage >= 2 ? "beg" : tone === "up" ? "smug" : undefined;
   const face = shaking ? "dizzy" : react ?? stageFace;
   const svg = useMemo(
-    () => tickySvg(mood, mood === "melt" ? "down" : tone, `${name} ${moodName(mood)}`, face),
-    [mood, tone, name, face],
+    () => tickySvg(mood, mood === "melt" ? "down" : tone, `${name} ${moodName(mood)}`, face, undefined, false, item.outfit),
+    [mood, tone, name, face, item.outfit],
   );
 
   // ---- talking, faces, particles -------------------------------------------------------------

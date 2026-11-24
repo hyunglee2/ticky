@@ -15,6 +15,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { EV, on, send, type Layout, type SetMessage, type Snapshot } from "./sync";
 import { Settings, type Bridge } from "./components/Settings";
 import { Tease } from "./components/Tease";
+import { Dress } from "./components/Dress";
 import { inTauri, useClickThroughRegions } from "./clickThrough";
 import { useWatchlist } from "./watchlist";
 import "./App.css";
@@ -135,6 +136,8 @@ export default function App() {
   // only the stocks shown on screen are polled; keyed by symbols so a re-render doesn't resubscribe
   const shownKey = watch.shown.map((e) => e.symbol).join(",");
   const shown = useMemo(() => watch.shown, [shownKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  // what each Ticky wears (꾸미기) changes without the list changing, so it's read fresh, not from `shown`
+  const outfits = Object.fromEntries(watch.entries.map((e) => [e.symbol, e.outfit]));
   useEffect(() => {
     return feed.subscribe(shown, (q) => setQuotes((prev) => ({ ...prev, [q.symbol]: q })), setStatus);
   }, [feed, shown]);
@@ -299,6 +302,13 @@ export default function App() {
     }, Math.max(0, until - Date.now())));
     return () => ids.forEach((id) => window.clearTimeout(id));
   }, [plasters]);
+  // 꾸미기 uses the same window (and hides the Ticky here the same way)
+  const [dressing, setDressing] = useState<string | null>(null);
+  useEffect(() => on(EV.teaseClosed, () => setDressing(null)), []);
+  const dress = (symbol: string) => {
+    setDressing(symbol);
+    if (inTauri()) invoke("open_tease", { symbol, mode: "dress" }).catch(() => setDressing(null));
+  };
   const tease = (symbol: string) => {
     setTeasing(symbol);
     if (inTauri()) invoke("open_tease", { symbol }).catch(() => setTeasing(null));
@@ -314,6 +324,11 @@ export default function App() {
           {teasing && !inTauri() && (
             <div className="tease-inline">
               <Tease symbol={teasing} bridge={snapshot} onDone={(hits) => teaseDone(teasing, hits)} />
+            </div>
+          )}
+          {dressing && !inTauri() && (
+            <div className="tease-inline">
+              <Dress symbol={dressing} bridge={snapshot} onDone={() => setDressing(null)} />
             </div>
           )}
           {inlineSettings && (
@@ -350,7 +365,9 @@ export default function App() {
                   onDelete={() => watch.remove(item.symbol)}
                   commute={commute ?? undefined}
                   onTease={() => tease(item.symbol)}
-                  away={teasing === item.symbol}
+                  away={teasing === item.symbol || dressing === item.symbol}
+                  onDress={() => dress(item.symbol)}
+                  outfit={outfits[item.symbol]}
                   bandage={item.symbol in plasters}
                 />
               ) : null;
