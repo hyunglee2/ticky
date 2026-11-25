@@ -17,6 +17,8 @@ export interface Settings {
   scale: number;
   followHours: boolean;
   wakeExtended: boolean;
+  /** step aside (hide) while a full-screen app is in front */
+  hideFullscreen: boolean;
   preview: boolean;
 }
 

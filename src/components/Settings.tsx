@@ -59,6 +59,7 @@ export function Settings({ bridge, onClose }: { bridge?: Bridge; onClose?: () =>
     scale: load("ticky.scale", 1),
     followHours: load("ticky.followHours", false),
     wakeExtended: load("ticky.wakeExtended", true),
+    hideFullscreen: load("ticky.hideFullscreen", true),
     preview: false,
     quotes: {},
     moods: {},
@@ -127,6 +128,7 @@ export function Settings({ bridge, onClose }: { bridge?: Bridge; onClose?: () =>
             <div className="set-sec">
               <Switch on={snap.followHours} onChange={(v) => set("followHours", v)} label="장이 닫히면 재우기" />
               <Switch on={snap.wakeExtended} onChange={(v) => set("wakeExtended", v)} disabled={!snap.followHours} label="미국 장전·장후엔 깨어 있기" sub />
+              <Switch on={snap.hideFullscreen} onChange={(v) => set("hideFullscreen", v)} label="전체 화면 앱을 쓸 땐 숨기기" />
               <Switch on={snap.preview} onChange={(v) => set("preview", v)} label="모든 상태 미리보기" />
             </div>
           </>

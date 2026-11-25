@@ -1,3 +1,4 @@
+mod fullscreen;
 mod kis;
 mod naver;
 mod search;
@@ -125,6 +126,8 @@ fn text_scale() -> f64 {
 
 /// Show the window if hidden, hide it if shown.
 fn toggle_window(app: &AppHandle) {
+    // shown or hidden by hand: the full-screen watcher leaves it as the user put it
+    app.state::<fullscreen::FullscreenHide>().forget();
     if let Some(window) = app.get_webview_window("main") {
         if window.is_visible().unwrap_or(false) {
             let _ = window.hide();
@@ -276,6 +279,7 @@ fn dock_bottom(app: AppHandle, height: f64) {
 pub fn run() {
     tauri::Builder::default()
         .manage(HitRegions::default())
+        .manage(fullscreen::FullscreenHide::default())
         .manage(kis::KisState::default())
         .invoke_handler(tauri::generate_handler![
             set_hit_regions,
@@ -286,6 +290,7 @@ pub fn run() {
             close_tease,
             open_welcome,
             open_kis_portal,
+            fullscreen::set_fullscreen_hide,
             close_welcome,
             yahoo::fetch_yahoo_quotes,
             kis::fetch_kis_quotes,
@@ -319,6 +324,7 @@ pub fn run() {
 
             dock_to_bottom(app.handle(), None)?;
             start_click_through(app.handle().clone());
+            fullscreen::start(app.handle().clone());
             Ok(())
         })
         .run(tauri::generate_context!())

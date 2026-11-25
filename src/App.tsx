@@ -112,6 +112,7 @@ export default function App() {
   }, [commute]);
   // US pre-market and after-hours: awake (default) or asleep like the overnight close
   const [wakeExtended, setWakeExtended] = useState<boolean>(() => load("ticky.wakeExtended", true));
+  const [hideFullscreen, setHideFullscreen] = useState<boolean>(() => load("ticky.hideFullscreen", true));
   const [quotes, setQuotes] = useState<Record<string, Quote>>({});
   const [pets, setPets] = useState<Record<string, PetState>>({});
   const petsRef = useRef(pets);
@@ -131,6 +132,11 @@ export default function App() {
 
   useEffect(() => save("ticky.followHours", followHours), [followHours]);
   useEffect(() => save("ticky.wakeExtended", wakeExtended), [wakeExtended]);
+  // the Rust side does the hiding; tell it whether to (now, and whenever it changes)
+  useEffect(() => {
+    save("ticky.hideFullscreen", hideFullscreen);
+    if (inTauri()) invoke("set_fullscreen_hide", { on: hideFullscreen }).catch(() => {});
+  }, [hideFullscreen]);
   // preview mode: show every state side by side (not saved; off on each launch)
   const [preview, setPreview] = useState(false);
   // only the stocks shown on screen are polled; keyed by symbols so a re-render doesn't resubscribe
@@ -244,7 +250,7 @@ export default function App() {
   // ---- the settings window ----------------------------------------------------------------
   // it lives in its own window: send it what it shows (now and then, and when it says hello),
   // and apply what it changes. In the browser preview there's no 2nd window: it opens in-page.
-  const snapshot: Snapshot = { quotes, moods, status, layout, scale, followHours, wakeExtended, preview };
+  const snapshot: Snapshot = { quotes, moods, status, layout, scale, followHours, wakeExtended, hideFullscreen, preview };
   const snapRef = useRef(snapshot);
   snapRef.current = snapshot;
   useEffect(() => {
@@ -259,6 +265,7 @@ export default function App() {
       case "scale": setScale(m.value); break;
       case "followHours": setFollowHours(m.value); break;
       case "wakeExtended": setWakeExtended(m.value); break;
+      case "hideFullscreen": setHideFullscreen(m.value); break;
       case "preview": setPreview(m.value); break;
     }
   };
