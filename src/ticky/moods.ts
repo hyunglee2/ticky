@@ -163,6 +163,15 @@ export function nightReport(tone: Tone, pct: number): string {
   return pickFrom(NIGHT_LINES.report[tone]).replace("{p}", p);
 }
 
+/** 미국 장 휴장일 ({h} = the holiday's name): says so once, then rests like at night */
+export const HOLIDAY_LINES = {
+  report: ["오늘 미장은 쉬는 날! {h}", "{h}! 미장 휴장이야", "오늘은 휴장~ 나도 쉴래"],
+  rest: ["오늘은 미장 휴장", "휴장이라 푹 쉬는 중", "다음 장에서 보자", "쉬는 날엔 쉬어야지", "{h} 잘 보내"],
+};
+
+/** a holiday line with its name filled in */
+export const holidayLine = (line: string, name: string) => line.replace("{h}", name);
+
 /** the grey guide Ticky that shows up while the watchlist is empty */
 export const GUIDE_LINES = {
   first: "관심 종목이 비어 있어!",
