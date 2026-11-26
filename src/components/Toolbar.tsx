@@ -96,6 +96,9 @@ export function Toolbar({ layout, onLayout, onSettings, onMove }: Props) {
             role="menuitem"
             onClick={() => { setMenu(false); onLayout(layout === "roam" ? "prices" : "roam"); }}
           >{layout === "roam" ? "티키 퇴근 (시세만 보기)" : "티키 출근 (돌아다니기)"}</button>
+          {inTauri() && (
+            <button type="button" role="menuitem" onClick={() => { setMenu(false); invoke("quit_app").catch(() => {}); }}>티키 종료</button>
+          )}
         </div>
       )}
     </div>

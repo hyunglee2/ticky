@@ -82,6 +82,17 @@ export function Settings({ bridge, onClose }: { bridge?: Bridge; onClose?: () =>
     invoke<typeof monitors>("list_monitors").then(setMonitors).catch(() => setMonitors([]));
   }, [page]);
 
+  // 컴퓨터를 켜면 티키도 출근: Windows' own setting, so asked of the Rust side, not the snapshot
+  const [autostart, setAutostart] = useState<{ on: boolean; available: boolean } | null>(null);
+  useEffect(() => {
+    if (page !== "screen" || !inTauri()) return;
+    invoke<{ on: boolean; available: boolean }>("get_autostart").then(setAutostart).catch(() => setAutostart(null));
+  }, [page]);
+  const toggleAutostart = (on: boolean) => {
+    setAutostart((a) => a && { ...a, on });
+    invoke<{ on: boolean; available: boolean }>("set_autostart", { on }).then(setAutostart).catch(() => {});
+  };
+
   const set = <K extends keyof Values>(key: K, value: Values[K]) => {
     setSnap((s) => ({ ...s, [key]: value })); // show it at once
     const msg = { key, value } as SetMessage;
@@ -151,6 +162,12 @@ export function Settings({ bridge, onClose }: { bridge?: Bridge; onClose?: () =>
                 ))}
               </div>
             </div>
+            {autostart && (
+              <div className="set-sec">
+                <Switch on={autostart.on} onChange={toggleAutostart} disabled={!autostart.available} label="컴퓨터를 켜면 티키도 출근" />
+                {!autostart.available && <p className="set-hint">설치한 앱에서만 켤 수 있어요.</p>}
+              </div>
+            )}
             <div className="set-sec">
               <Switch on={snap.followHours} onChange={(v) => set("followHours", v)} label="장이 닫히면 재우기" />
               <Switch on={snap.wakeExtended} onChange={(v) => set("wakeExtended", v)} disabled={!snap.followHours} label="미국 장전·장후엔 깨어 있기" sub />

@@ -1,3 +1,4 @@
+mod autostart;
 mod fullscreen;
 mod kis;
 mod naver;
@@ -425,6 +426,12 @@ fn mouse_held() -> bool {
     false
 }
 
+/// 티키 종료: from the corner logo's menu (the tray menu has the same)
+#[tauri::command]
+fn quit_app(app: AppHandle) {
+    app.exit(0);
+}
+
 /// Called by the UI whenever what's on screen needs a different height (cards, panels, size setting).
 #[tauri::command]
 fn dock_bottom(app: AppHandle, height: f64) {
@@ -451,6 +458,9 @@ pub fn run() {
             list_monitors,
             set_monitor,
             await_logo_drop,
+            quit_app,
+            autostart::get_autostart,
+            autostart::set_autostart,
             open_settings,
             open_tease,
             close_tease,

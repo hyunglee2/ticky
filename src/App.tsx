@@ -140,6 +140,14 @@ export default function App() {
     save("ticky.hideFullscreen", hideFullscreen);
     if (inTauri()) invoke("set_fullscreen_hide", { on: hideFullscreen }).catch(() => {});
   }, [hideFullscreen]);
+  // 컴퓨터를 켜면 티키도 출근: on by default, set once on the first run of the installed app
+  // (a dev build can't register itself, so it doesn't count as that first run)
+  useEffect(() => {
+    if (!inTauri() || load("ticky.autostartSet", false)) return;
+    invoke<{ available: boolean }>("set_autostart", { on: true })
+      .then((a) => { if (a.available) save("ticky.autostartSet", true); })
+      .catch(() => {});
+  }, []);
   // which monitor: the Rust side moves the window there (now, and whenever it changes)
   useEffect(() => {
     save("ticky.monitor", monitor);
