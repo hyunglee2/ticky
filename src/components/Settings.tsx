@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { inTauri } from "../clickThrough";
 import type { FeedStatus, LiveStatus, Quote } from "../market/types";
 import { SCALES, useTextScale } from "../scale";
@@ -60,6 +61,7 @@ export function Settings({ bridge, onClose }: { bridge?: Bridge; onClose?: () =>
     followHours: load("ticky.followHours", false),
     wakeExtended: load("ticky.wakeExtended", true),
     hideFullscreen: load("ticky.hideFullscreen", true),
+    monitor: load("ticky.monitor", ""),
     preview: false,
     quotes: {},
     moods: {},
@@ -72,6 +74,13 @@ export function Settings({ bridge, onClose }: { bridge?: Bridge; onClose?: () =>
     send(EV.hello);
     return off;
   }, [bridge]);
+
+  // the monitors plugged in (asked again whenever the 화면 page is opened)
+  const [monitors, setMonitors] = useState<{ name: string; primary: boolean; width: number; height: number }[]>([]);
+  useEffect(() => {
+    if (page !== "screen" || !inTauri()) return;
+    invoke<typeof monitors>("list_monitors").then(setMonitors).catch(() => setMonitors([]));
+  }, [page]);
 
   const set = <K extends keyof Values>(key: K, value: Values[K]) => {
     setSnap((s) => ({ ...s, [key]: value })); // show it at once
@@ -115,6 +124,23 @@ export function Settings({ bridge, onClose }: { bridge?: Bridge; onClose?: () =>
               </div>
               <p className="set-hint">{LAYOUTS.find((l) => l.value === snap.layout)?.hint}</p>
             </div>
+            {monitors.length > 1 && (
+              <div className="set-sec">
+                <div className="set-label">모니터</div>
+                <div className="seg" role="group" aria-label="모니터">
+                  {monitors.map((m, i) => {
+                    const on = snap.monitor ? m.name === snap.monitor : m.primary;
+                    return (
+                      <button key={m.name} type="button" className={on ? "on" : ""} aria-pressed={on} title={`${m.width}×${m.height}`}
+                        onClick={() => set("monitor", m.primary ? "" : m.name)}>
+                        {i + 1}{m.primary ? " · 주 모니터" : ""}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="set-hint">티키가 걸어 다닐 화면이에요. 번호는 왼쪽부터 세요.</p>
+              </div>
+            )}
             <div className="set-sec">
               <div className="set-label">크기</div>
               <div className="seg" role="group" aria-label="크기">

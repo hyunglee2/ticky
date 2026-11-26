@@ -113,6 +113,7 @@ export default function App() {
   // US pre-market and after-hours: awake (default) or asleep like the overnight close
   const [wakeExtended, setWakeExtended] = useState<boolean>(() => load("ticky.wakeExtended", true));
   const [hideFullscreen, setHideFullscreen] = useState<boolean>(() => load("ticky.hideFullscreen", true));
+  const [monitor, setMonitor] = useState<string>(() => load("ticky.monitor", ""));
   const [quotes, setQuotes] = useState<Record<string, Quote>>({});
   const [pets, setPets] = useState<Record<string, PetState>>({});
   const petsRef = useRef(pets);
@@ -137,6 +138,11 @@ export default function App() {
     save("ticky.hideFullscreen", hideFullscreen);
     if (inTauri()) invoke("set_fullscreen_hide", { on: hideFullscreen }).catch(() => {});
   }, [hideFullscreen]);
+  // which monitor: the Rust side moves the window there (now, and whenever it changes)
+  useEffect(() => {
+    save("ticky.monitor", monitor);
+    if (inTauri()) invoke("set_monitor", { name: monitor || null }).catch(() => {});
+  }, [monitor]);
   // preview mode: show every state side by side (not saved; off on each launch)
   const [preview, setPreview] = useState(false);
   // only the stocks shown on screen are polled; keyed by symbols so a re-render doesn't resubscribe
@@ -250,7 +256,7 @@ export default function App() {
   // ---- the settings window ----------------------------------------------------------------
   // it lives in its own window: send it what it shows (now and then, and when it says hello),
   // and apply what it changes. In the browser preview there's no 2nd window: it opens in-page.
-  const snapshot: Snapshot = { quotes, moods, status, layout, scale, followHours, wakeExtended, hideFullscreen, preview };
+  const snapshot: Snapshot = { quotes, moods, status, layout, scale, followHours, wakeExtended, hideFullscreen, monitor, preview };
   const snapRef = useRef(snapshot);
   snapRef.current = snapshot;
   useEffect(() => {
@@ -266,6 +272,7 @@ export default function App() {
       case "followHours": setFollowHours(m.value); break;
       case "wakeExtended": setWakeExtended(m.value); break;
       case "hideFullscreen": setHideFullscreen(m.value); break;
+      case "monitor": setMonitor(m.value); break;
       case "preview": setPreview(m.value); break;
     }
   };
@@ -278,6 +285,11 @@ export default function App() {
     else setInlineSettings(true);
   };
   const bridge: Bridge = { snapshot, set: apply };
+  // the corner logo was dragged to another monitor: the Tickies move there and walk in again
+  const moveHouse = (name: string) => {
+    setMonitor(name);
+    if (onScreen === "roam" && !commute) setCommute("in");
+  };
 
   // first run: open the market picker's window; once a market is picked (the list arrives here),
   // close it from this side too, so it never lingers
@@ -327,7 +339,7 @@ export default function App() {
       {!watch.ready && !inTauri() && <Onboarding onPick={watch.start} />}
       {watch.ready && (
         <>
-          <Toolbar layout={layout} onLayout={switchLayout} onSettings={openSettings} />
+          <Toolbar layout={layout} onLayout={switchLayout} onSettings={openSettings} onMove={moveHouse} />
           {teasing && !inTauri() && (
             <div className="tease-inline">
               <Tease symbol={teasing} bridge={snapshot} onDone={(hits) => teaseDone(teasing, hits)} />

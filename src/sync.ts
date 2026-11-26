@@ -19,6 +19,8 @@ export interface Settings {
   wakeExtended: boolean;
   /** step aside (hide) while a full-screen app is in front */
   hideFullscreen: boolean;
+  /** the monitor the Tickies live on (its system name); "" = the primary one */
+  monitor: string;
   preview: boolean;
 }
 

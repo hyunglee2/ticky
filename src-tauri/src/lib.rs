@@ -142,8 +142,17 @@ fn toggle_window(app: &AppHandle) {
 /// Tickies can wander the whole bottom edge. `height` is in logical px; `None` keeps the current one.
 fn dock_to_bottom(app: &AppHandle, height: Option<f64>) -> tauri::Result<()> {
     let Some(window) = app.get_webview_window("main") else { return Ok(()) };
-    // an off-screen window may have no current monitor; fall back to the primary one
-    let monitor = if is_on_screen(&window) { window.current_monitor()? } else { None };
+    // the monitor picked in the settings, if it's plugged in; otherwise the one it's on
+    // (an off-screen window may have no current monitor: then the primary one)
+    let chosen = app.state::<MonitorChoice>().0.lock().ok().and_then(|c| c.clone());
+    let picked = chosen.and_then(|name| {
+        window.available_monitors().ok()?.into_iter().find(|m| m.name().is_some_and(|n| *n == name))
+    });
+    let monitor = match picked {
+        Some(m) => Some(m),
+        None if is_on_screen(&window) => window.current_monitor()?,
+        None => None,
+    };
     let Some(monitor) = monitor.or(window.primary_monitor()?) else { return Ok(()) };
     let work = monitor.work_area();
     let h = match height {
@@ -269,6 +278,153 @@ fn open_kis_portal() {
         .spawn();
 }
 
+/// Which monitor the Tickies live on (its system name, e.g. `\.DISPLAY2`); `None` = wherever
+/// the window is (the primary monitor to begin with).
+#[derive(Default)]
+struct MonitorChoice(Mutex<Option<String>>);
+
+#[derive(serde::Serialize)]
+struct MonitorItem {
+    name: String,
+    primary: bool,
+    width: u32,
+    height: u32,
+}
+
+/// The monitors plugged in, left to right, for the settings' picker.
+#[tauri::command]
+fn list_monitors(app: AppHandle) -> Vec<MonitorItem> {
+    let Some(window) = app.get_webview_window("main") else { return vec![] };
+    let primary = window.primary_monitor().ok().flatten().and_then(|m| m.name().cloned());
+    let mut list: Vec<_> = window.available_monitors().unwrap_or_default();
+    list.sort_by_key(|m| (m.position().x, m.position().y));
+    list.into_iter()
+        .filter_map(|m| {
+            let name = m.name()?.clone();
+            let size = m.size();
+            Some(MonitorItem { primary: primary.as_ref() == Some(&name), name, width: size.width, height: size.height })
+        })
+        .collect()
+}
+
+/// Move the Tickies to another monitor (or `None`: back to the primary one), keeping their height.
+#[tauri::command]
+fn set_monitor(app: AppHandle, name: Option<String>) {
+    let Some(window) = app.get_webview_window("main") else { return };
+    let height = match (window.outer_size(), window.scale_factor()) {
+        (Ok(size), Ok(scale)) => Some(size.height as f64 / scale),
+        _ => None,
+    };
+    let name = name.or_else(|| window.primary_monitor().ok().flatten().and_then(|m| m.name().cloned()));
+    if let Ok(mut choice) = app.state::<MonitorChoice>().0.lock() {
+        *choice = name;
+    }
+    let _ = dock_to_bottom(&app, height);
+}
+
+#[derive(serde::Serialize)]
+struct LogoDrop {
+    name: String,
+    primary: bool,
+}
+
+/// The corner logo is being dragged: wait for the mouse button to come up (anywhere on any
+/// screen, since the cursor soon leaves this strip), then say which monitor it was let go on.
+/// `None` if that's the monitor the Tickies are on already (or nothing could be told).
+#[tauri::command]
+async fn await_logo_drop(app: AppHandle) -> Option<LogoDrop> {
+    // the logo itself rides along under the cursor, in a tiny window of its own (the Tickies'
+    // strip can't draw outside itself)
+    if let Some(old) = app.get_webview_window("drag") {
+        let _ = old.destroy();
+    }
+    let follower = tauri::WebviewWindowBuilder::new(&app, "drag", tauri::WebviewUrl::App("index.html?view=drag".into()))
+        .title("ticky")
+        .transparent(true)
+        .decorations(false)
+        .shadow(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .resizable(false)
+        .focused(false)
+        .visible(false)
+        .inner_size(64.0, 64.0)
+        .build()
+        .ok();
+    if let Some(w) = &follower {
+        let _ = w.set_ignore_cursor_events(true);
+    }
+    let handle = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let start = std::time::Instant::now();
+        let mut shown = false;
+        while mouse_held() && start.elapsed() < std::time::Duration::from_secs(30) {
+            let place = follower.as_ref().and_then(|w| Some((w, handle.cursor_position().ok()?, w.outer_size().ok()?)));
+            if let Some((w, cursor, size)) = place {
+                // the logo's middle on the cursor
+                let _ = w.set_position(PhysicalPosition::new(
+                    cursor.x as i32 - size.width as i32 / 2,
+                    cursor.y as i32 - size.height as i32 / 2,
+                ));
+                if !shown {
+                    show_quietly(w);
+                    shown = true;
+                }
+            }
+            std::thread::sleep(std::time::Duration::from_millis(12));
+        }
+        if let Some(w) = follower {
+            let _ = w.destroy();
+        }
+        let window = handle.get_webview_window("main")?;
+        let cursor = handle.cursor_position().ok()?;
+        let target = window.available_monitors().ok()?.into_iter().find(|m| {
+            let (p, s) = (m.position(), m.size());
+            cursor.x >= p.x as f64 && cursor.x < p.x as f64 + s.width as f64
+                && cursor.y >= p.y as f64 && cursor.y < p.y as f64 + s.height as f64
+        })?;
+        let name = target.name()?.clone();
+        let here = window.current_monitor().ok().flatten().and_then(|m| m.name().cloned());
+        if here.as_ref() == Some(&name) {
+            return None;
+        }
+        let primary = window.primary_monitor().ok().flatten().and_then(|m| m.name().cloned());
+        Some(LogoDrop { primary: primary.as_ref() == Some(&name), name })
+    })
+    .await
+    .ok()
+    .flatten()
+}
+
+/// Show a window without taking the focus from whatever has it.
+#[cfg(windows)]
+fn show_quietly(window: &tauri::WebviewWindow) {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_SHOWNOACTIVATE};
+    let Ok(hwnd) = window.hwnd() else { return };
+    // SAFETY: showing our own top-level window
+    unsafe {
+        ShowWindow(hwnd.0 as _, SW_SHOWNOACTIVATE);
+    }
+}
+
+#[cfg(not(windows))]
+fn show_quietly(window: &tauri::WebviewWindow) {
+    let _ = window.show();
+}
+
+/// Is either mouse button down? (Asked of the system, so it works outside this window too.)
+#[cfg(windows)]
+fn mouse_held() -> bool {
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON, VK_RBUTTON};
+    // SAFETY: reads the button state, nothing else
+    unsafe { (GetAsyncKeyState(VK_LBUTTON as i32) as u16 & 0x8000) != 0 || (GetAsyncKeyState(VK_RBUTTON as i32) as u16 & 0x8000) != 0 }
+}
+
+#[cfg(not(windows))]
+fn mouse_held() -> bool {
+    false
+}
+
 /// Called by the UI whenever what's on screen needs a different height (cards, panels, size setting).
 #[tauri::command]
 fn dock_bottom(app: AppHandle, height: f64) {
@@ -278,13 +434,23 @@ fn dock_bottom(app: AppHandle, height: f64) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // one ticky at a time: launching it again just brings the Tickies forward
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.show();
+            }
+        }))
         .manage(HitRegions::default())
+        .manage(MonitorChoice::default())
         .manage(fullscreen::FullscreenHide::default())
         .manage(kis::KisState::default())
         .invoke_handler(tauri::generate_handler![
             set_hit_regions,
             text_scale,
             dock_bottom,
+            list_monitors,
+            set_monitor,
+            await_logo_drop,
             open_settings,
             open_tease,
             close_tease,
