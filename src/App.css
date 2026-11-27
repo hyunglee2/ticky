@@ -723,6 +723,23 @@ g.spark { animation: spark 0.16s steps(2) infinite alternate; transform-box: fil
 .ticker.in-panel .ticker-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .ticker.in-panel .ticker-row[data-slid="1"], .ticker.in-panel[data-dragging] .ticker-row { background: #ece8e1; }
 .ticker.in-panel .ticker-item { display: block; }
+/* 숨기기: the eye at the row's end; a hidden stock's row fades */
+.ticker .ticker-eye, .panel .ticker-eye {
+  display: grid;
+  place-items: center;
+  width: calc(24 * var(--u));
+  height: calc(24 * var(--u));
+  margin: calc(-4 * var(--u)) calc(-4 * var(--u)) calc(-4 * var(--u)) 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  color: #999;
+  cursor: pointer;
+}
+.panel .ticker-eye:hover, .ticker .ticker-eye:hover { background: rgba(0, 0, 0, 0.06); color: #333; }
+.ticker-eye svg { width: calc(16 * var(--u)); height: calc(16 * var(--u)); fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+.ticker.in-panel .ticker-row[data-hidden="1"] > :not(.ticker-eye) { opacity: 0.4; }
 .card-full { margin-top: 1px; font-size: calc(10.5 * var(--u)); color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* the corner: just a small Ticky; its menu opens beside it */

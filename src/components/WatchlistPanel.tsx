@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { inTauri } from "../clickThrough";
 import type { Quote } from "../market/types";
 import type { MoodKey } from "../ticky/moods";
-import { MAX_LIST, STARTERS, type AddResult, type Watchlist } from "../watchlist";
+import { MAX_LIST, MAX_SHOWN, STARTERS, type AddResult, type Watchlist } from "../watchlist";
 import { TickerStack } from "./TickerStack";
 
 interface Hit { symbol: string; name: string; market: "KR" | "US"; exchange: string }
@@ -31,6 +31,7 @@ async function search(query: string): Promise<Hit[]> {
 
 const NOTICE: Record<AddResult, string> = {
   added: "",
+  "added-hidden": `화면엔 ${MAX_SHOWN}개까지 보여요. 숨긴 채로 추가했어요`,
   duplicate: "이미 있는 종목이에요",
   full: `${MAX_LIST}개까지 담을 수 있어요. 하나를 지우고 추가해 주세요`,
 };
@@ -82,12 +83,13 @@ export function WatchlistPanel({ bare, watch, quotes, moods }: Props) {
 
   const listed = new Set(watch.entries.map((e) => e.symbol));
   const full = watch.entries.length >= MAX_LIST;
+  const shownCount = watch.shown.length;
 
   return (
     <div className={bare ? "watchlist bare" : "panel watchlist"}>
       <div className="wl-head">
         <b>관심 종목</b>
-        <span className={full ? "wl-count full" : "wl-count"}>{watch.entries.length}/{MAX_LIST}</span>
+        <span className={shownCount >= MAX_SHOWN ? "wl-count full" : "wl-count"} title="화면에 보이는 종목">{shownCount}/{MAX_SHOWN}</span>
       </div>
 
       <div className="search">
@@ -133,10 +135,14 @@ export function WatchlistPanel({ bare, watch, quotes, moods }: Props) {
             watch.entries.findIndex((e) => e.symbol === to),
           )}
           onDelete={watch.remove}
+          onToggleHide={(symbol) => {
+            const hide = !watch.entries.find((e) => e.symbol === symbol)?.hidden;
+            if (!watch.setHidden(symbol, hide)) say(`화면엔 ${MAX_SHOWN}개까지 보여요. 하나를 숨기고 꺼내 주세요`);
+          }}
         />
         {watch.entries.length === 0 && <p className="hits-empty">위에서 종목을 검색해 추가해 보세요</p>}
       </div>
-      {watch.entries.length > 0 && <p className="wl-foot">끌어서 순서 바꾸기 · 오른쪽 끝까지 밀어서 삭제</p>}
+      {watch.entries.length > 0 && <p className="wl-foot">끌어서 순서 바꾸기 · 오른쪽 끝까지 밀어서 삭제 · 눈 버튼으로 숨기기</p>}
     </div>
   );
 }

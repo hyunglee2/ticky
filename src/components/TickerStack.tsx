@@ -4,7 +4,7 @@ import { moodName, toneFor, type MoodKey } from "../ticky/moods";
 import { QuoteCard } from "./QuoteCard";
 
 interface Props {
-  items: WatchItem[];
+  items: (WatchItem & { hidden?: boolean })[];
   quotes: Record<string, Quote>;
   moods: Record<string, MoodKey>;
   /** drag a row up or down to reorder: move `from` to where `to` is */
@@ -13,6 +13,8 @@ interface Props {
   onDelete: (symbol: string) => void;
   /** inside the watchlist panel: same rows and gestures, laid out in the panel, no details card */
   inPanel?: boolean;
+  /** in the panel: the eye button at the row's end hides the stock from the screen or brings it back */
+  onToggleHide?: (symbol: string) => void;
 }
 
 // quiet grey text after the %, outside regular hours
@@ -36,7 +38,7 @@ type Gesture =
  *   - right-click it for the same details card a Ticky shows on hover
  * A small red dot blinks while that stock's 비상 is on.
  */
-export function TickerStack({ items, quotes, moods, onMove, onDelete, inPanel }: Props) {
+export function TickerStack({ items, quotes, moods, onMove, onDelete, inPanel, onToggleHide }: Props) {
   const [open, setOpen] = useState<string | null>(null);
   const [gesture, setGesture] = useState<Gesture | null>(null);
   const [leaving, setLeaving] = useState<string | null>(null); // swiped away, sliding out
@@ -159,6 +161,7 @@ export function TickerStack({ items, quotes, moods, onMove, onDelete, inPanel }:
               data-open={open === item.symbol ? "1" : undefined}
               data-alarm={mood === "alarm" ? "1" : undefined}
               data-asleep={mood === "sleep" ? "1" : undefined}
+              data-hidden={item.hidden ? "1" : undefined}
               onPointerDown={(e) => onPointerDown(e, item.symbol, i)}
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
@@ -172,6 +175,23 @@ export function TickerStack({ items, quotes, moods, onMove, onDelete, inPanel }:
               <span className="ticker-price">{q && !offline ? formatPrice(item.symbol, q.price) : "—"}</span>
               <b className={`ticker-pct ${tone}`}>{q && !offline ? `${signed(pct)}%` : "—"}</b>
               <span className="ticker-session">{badge ?? ""}</span>{/* always there: keeps the columns lined up */}
+              {onToggleHide && (
+                <button
+                  type="button"
+                  className="ticker-eye"
+                  aria-pressed={!item.hidden}
+                  title={item.hidden ? "화면에 다시 보이기" : "화면에서 숨기기 (목록엔 남아요)"}
+                  aria-label={item.hidden ? `${name} 보이기` : `${name} 숨기기`}
+                  onPointerDown={(e) => e.stopPropagation()} // a click here isn't a drag or a swipe
+                  onClick={() => onToggleHide(item.symbol)}
+                >
+                  <svg viewBox="0 0 20 20" aria-hidden="true">
+                    <path d="M2 10s3-5.5 8-5.5S18 10 18 10s-3 5.5-8 5.5S2 10 2 10z" />
+                    <circle cx="10" cy="10" r="2.4" />
+                    {item.hidden && <line x1="3.5" y1="16.5" x2="16.5" y2="3.5" />}
+                  </svg>
+                </button>
+              )}
             </div>
           </div>
         );

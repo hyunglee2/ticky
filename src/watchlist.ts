@@ -1,5 +1,5 @@
 // Watchlist rules (see "관심 종목 규칙" in the planning doc):
-//   - every stock on the list is on screen (as a Ticky or a price row); up to 5
+//   - up to 5 on screen (as a Ticky or a price row); more can wait on the list hidden (숨기기)
 //   - first run starts from 3 representative stocks of the chosen market
 //   - add from the search box, delete from the list / a Ticky's menu / swiping a price row
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -7,10 +7,13 @@ import { EV, on, send } from "./sync";
 import type { WatchItem } from "./market/types";
 import type { Outfit } from "./ticky/outfit";
 
-export const MAX_LIST = 5;
+/** on screen at once */
+export const MAX_SHOWN = 5;
+/** on the list in all, hidden ones included */
+export const MAX_LIST = 20;
 
-/** a stock on the list, and what its Ticky is wearing (꾸미기) */
-export type WatchEntry = WatchItem & { outfit?: Outfit };
+/** a stock on the list, what its Ticky is wearing (꾸미기), and whether it's hidden from the screen */
+export type WatchEntry = WatchItem & { outfit?: Outfit; hidden?: boolean };
 
 export type StarterMarket = "kr" | "us" | "both";
 
@@ -40,13 +43,16 @@ function read(): WatchEntry[] | null {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
-      // older lists could hold 20 with only some shown: keep the shown ones first, up to the limit
-      const saved = JSON.parse(raw) as (WatchEntry & { shown?: boolean })[];
-      const ordered = [...saved.filter((e) => e.shown !== false), ...saved.filter((e) => e.shown === false)];
-      return ordered.slice(0, MAX_LIST).map((e) => ({ symbol: e.symbol, name: e.name, ...(e.outfit ? { outfit: e.outfit } : {}) }));
+      // older lists marked what's off screen as `shown: false`; past 5 on screen, the rest wait hidden
+      const saved = (JSON.parse(raw) as (WatchEntry & { shown?: boolean })[]).slice(0, MAX_LIST);
+      let onScreen = 0;
+      return saved.map((e) => {
+        const hidden = !!e.hidden || e.shown === false || ++onScreen > MAX_SHOWN;
+        return { symbol: e.symbol, name: e.name, ...(e.outfit ? { outfit: e.outfit } : {}), ...(hidden ? { hidden: true } : {}) };
+      });
     }
     const old = localStorage.getItem(OLD_KEY);
-    if (old) return (JSON.parse(old) as WatchItem[]).slice(0, MAX_LIST).map((it) => ({ symbol: it.symbol, name: it.name }));
+    if (old) return (JSON.parse(old) as WatchItem[]).slice(0, MAX_LIST).map((it, i) => ({ symbol: it.symbol, name: it.name, ...(i >= MAX_SHOWN ? { hidden: true } : {}) }));
   } catch { /* fall through to onboarding */ }
   return null;
 }
@@ -54,7 +60,8 @@ function write(entries: WatchEntry[]) {
   try { localStorage.setItem(KEY, JSON.stringify(entries)); } catch { /* ignore */ }
 }
 
-export type AddResult = "added" | "duplicate" | "full";
+/** added-hidden: 5 already on screen, so it joined the list hidden */
+export type AddResult = "added" | "added-hidden" | "duplicate" | "full";
 
 export function useWatchlist() {
   // null = never set up yet → show the first-run market picker
@@ -86,8 +93,9 @@ export function useWatchlist() {
   const add = useCallback((item: WatchItem): AddResult => {
     if (list.some((e) => e.symbol === item.symbol)) return "duplicate";
     if (list.length >= MAX_LIST) return "full";
-    setEntries([...list, { ...item }]);
-    return "added";
+    const screenFull = list.filter((e) => !e.hidden).length >= MAX_SHOWN;
+    setEntries([...list, screenFull ? { ...item, hidden: true } : { ...item }]);
+    return screenFull ? "added-hidden" : "added";
   }, [list]);
 
   const remove = useCallback((symbol: string) => {
@@ -108,15 +116,24 @@ export function useWatchlist() {
     setEntries(list.map((e) => (e.symbol === symbol ? { ...e, outfit: Object.keys(clean).length ? clean : undefined } : e)));
   }, [list]);
 
+  /** 숨기기: off the screen but kept on the list (its outfit and place too). Bringing one back
+   *  needs room on screen: false if 5 are out already. */
+  const setHidden = useCallback((symbol: string, hidden: boolean): boolean => {
+    if (!hidden && list.filter((e) => !e.hidden).length >= MAX_SHOWN) return false;
+    setEntries(list.map((e) => (e.symbol === symbol ? { ...e, hidden: hidden || undefined } : e)));
+    return true;
+  }, [list]);
+
   return {
     ready: entries !== null,
     entries: list,
-    shown: list, // everything on the list is on screen
+    shown: list.filter((e) => !e.hidden),
     start,
     add,
     remove,
     move,
     setOutfit,
+    setHidden,
   };
 }
 

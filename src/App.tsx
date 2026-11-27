@@ -400,6 +400,7 @@ export default function App() {
                   holiday={!!p.holiday}
                   hint={p.trend ? TREND_LINES[p.trend] : undefined}
                   onDelete={() => watch.remove(item.symbol)}
+                  onHide={() => watch.setHidden(item.symbol, true)}
                   commute={commute ?? undefined}
                   onTease={() => tease(item.symbol)}
                   away={teasing === item.symbol || dressing === item.symbol}
@@ -411,7 +412,10 @@ export default function App() {
             })}
             {/* nothing on the list: a plain grey Ticky walks about and explains how to add stocks */}
             {!preview && watch.ready && shown.length === 0 && (
-              <Pet key={GUIDE.symbol} item={GUIDE} mood="calm" line={GUIDE_LINES.first} pool={GUIDE_LINES.pool} guide />
+              (watch.entries.length > 0
+                // everyone's hidden: says where to bring them back
+                ? <Pet key={GUIDE.symbol + "-hidden"} item={GUIDE} mood="calm" line={GUIDE_LINES.hiddenFirst} pool={GUIDE_LINES.hiddenPool} guide />
+                : <Pet key={GUIDE.symbol} item={GUIDE} mood="calm" line={GUIDE_LINES.first} pool={GUIDE_LINES.pool} guide />)
             )}
           </div>
         </>

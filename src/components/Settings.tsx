@@ -6,7 +6,7 @@ import { SCALES, useTextScale } from "../scale";
 import { EV, on, send, type Layout, type SetMessage, type Settings as Values, type Snapshot } from "../sync";
 import type { MoodKey } from "../ticky/moods";
 import logo from "../../design/ticky-logo.svg";
-import { MAX_LIST, useWatchlist } from "../watchlist";
+import { MAX_SHOWN, useWatchlist } from "../watchlist";
 import { KisBox } from "./KisBox";
 import { WatchlistPanel } from "./WatchlistPanel";
 
@@ -116,7 +116,7 @@ export function Settings({ bridge, onClose }: { bridge?: Bridge; onClose?: () =>
       <section className="content">
         {page === "stocks" && (
           <>
-            <h2>관심 종목 <span className="h2-count">{watch.entries.length}/{MAX_LIST}</span></h2>
+            <h2>관심 종목 <span className="h2-count" title="화면에 보이는 종목">{watch.shown.length}/{MAX_SHOWN}</span></h2>
             <WatchlistPanel bare watch={watch} quotes={snap.quotes} moods={snap.moods} />
           </>
         )}

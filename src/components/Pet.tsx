@@ -15,6 +15,7 @@ interface Props {
   pool: string[]; // what it says after that, now and then
   hint?: string[]; // situational lines (chart flow) that come up more often than the pool
   onDelete?: () => void; // remove from the list
+  onHide?: () => void;   // 숨기기: off the screen, still on the list
   /** fixed x position (preview lineup): the roaming engine leaves pinned Tickies alone */
   pinX?: number;
   /** 출근 / 퇴근 while the layout switches (roam.ts walks it in or out) */
@@ -48,6 +49,7 @@ const SAY_MS = [3200, 4800];   // how long a bubble stays
 const QUIET_MS = [4000, 11000]; // pause between bubbles
 const ALARM_QUIET_MS = [400, 800]; // 비상 is short: its follow-up line comes right after
 const HINT_CHANCE = 0.4;        // situational lines beat mood lines
+const UP_TALK_CHANCE = 0.5;     // two rising Tickies meeting: how often they have a set exchange
 const REACT_MS = 2200;          // a reaction (poke, throw, meeting) bubble
 const ANGRY_POKES = 4, ANGRY_WINDOW = 3000, ANGRY_MS = 1600; // poked this often → cross for a bit
 const FLY_SPEED = 600;          // px/s: thrown rather than just dropped
@@ -87,6 +89,10 @@ function reaction(e: TickyEvent, mood: MoodKey, tone: Tone, angry: boolean): { t
       if (mood === "sleep" || mood === "offline") return { text: null };
       const theirs = moodTone(e.other, 0);
       if (tone === "flat" || theirs === "flat") return say(R.meet.hi, "relief");
+      if (tone === "up" && theirs === "up" && e.roll < UP_TALK_CHANCE) {
+        const talk = R.meet.upUpTalk[Math.floor((e.roll / UP_TALK_CHANCE) * R.meet.upUpTalk.length)];
+        return { text: talk[e.turn], face: "happy" };
+      }
       if (tone === "up") return theirs === "up" ? say(R.meet.upUp, "happy") : say(R.meet.upDown, "relief");
       return say(theirs === "up" ? R.meet.downUp : R.meet.downDown); // keeps its glum mood face
     }
@@ -143,7 +149,7 @@ function useChatter(moodLine: string, pool: string[], hint: string[] | undefined
   return { said: hushed && !said?.react ? null : said, interrupt: (text: string) => interruptRef.current(text) };
 }
 
-export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commute, onTease, away, bandage, guide, night, holiday, onDress, outfit }: Props) {
+export function Pet({ item, quote, mood, line, pool, hint, onDelete, onHide, pinX, commute, onTease, away, bandage, guide, night, holiday, onDress, outfit }: Props) {
   const [hover, setHover] = useState(false);
   const [menu, setMenu] = useState<null | "open" | "confirm">(null);
   const [stay, setStay] = useState(false);     // 가만히 있기: doesn't wander (can still be carried)
@@ -273,6 +279,9 @@ export function Pet({ item, quote, mood, line, pool, hint, onDelete, pinX, commu
           )}
           {onTease && mood !== "offline" && (
             <button type="button" role="menuitem" onClick={() => { setMenu(null); onTease(); }}>괴롭히기</button>
+          )}
+          {onHide && (
+            <button type="button" role="menuitem" onClick={() => { setMenu(null); onHide(); }}>숨기기</button>
           )}
           {onDelete && (
             <button

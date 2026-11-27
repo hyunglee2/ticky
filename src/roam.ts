@@ -61,7 +61,7 @@ export type TickyEvent =
   | { kind: "shy" }
   | { kind: "fun" }
   | { kind: "poke" }
-  | { kind: "meet"; other: MoodKey }
+  | { kind: "meet"; other: MoodKey; turn: 0 | 1; roll: number } // turn: who speaks first; roll: shared, so a set dialogue lines up
   | { kind: "leave"; talk: boolean }   // 퇴근: bows goodbye before walking off
   | { kind: "arrive"; talk: boolean }; // 출근: walked in, bows hello
 
@@ -390,8 +390,9 @@ export function useRoaming(moods: Record<string, MoodKey>) {
             b.w.dir = -1;
             // only now and then do they hop for joy; usually they just stop and talk
             if (Math.random() < MEET_HOP_CHANCE) for (const p of [a, b]) p.el.dataset.hop = p.el.dataset.hop === "a" ? "b" : "a";
-            tell(a.el, { kind: "meet", other: moodsRef.current[b.symbol] ?? "calm" });
-            setTimeout(() => tell(b.el, { kind: "meet", other: moodsRef.current[a.symbol] ?? "calm" }), 900);
+            const roll = Math.random();
+            tell(a.el, { kind: "meet", other: moodsRef.current[b.symbol] ?? "calm", turn: 0, roll });
+            setTimeout(() => tell(b.el, { kind: "meet", other: moodsRef.current[a.symbol] ?? "calm", turn: 1, roll }), 900);
             continue;
           }
           if (Math.random() < PASS_CHANCE) {
