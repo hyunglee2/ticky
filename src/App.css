@@ -64,6 +64,8 @@ html, body, #root {
 
 /* face the way it's going (everything below mirrors with it) */
 .pet[data-dir="left"] .art svg { transform: scaleX(-1); }
+/* writing on an outfit (존버 머리띠) flips back so it still reads the right way round */
+.pet[data-dir="left"] .art svg .readable { transform: scaleX(-1); transform-box: fill-box; transform-origin: center; }
 
 /* walking: a 4-beat walk cycle instead of one bounce.
    --step  one full cycle; --half  half a stride (SVG units). roam.ts sets both from the ground
@@ -789,7 +791,21 @@ g.spark { animation: spark 0.16s steps(2) infinite alternate; transform-box: fil
 .set-sec { display: flex; flex-direction: column; gap: calc(8 * var(--u)); }
 .set-sec + .set-sec { padding-top: calc(14 * var(--u)); border-top: 1px solid #eeeae4; }
 .set-label { font-size: calc(11.5 * var(--u)); font-weight: 600; color: #999; }
+.set-label-row { display: flex; align-items: center; justify-content: space-between; }
+.panel .set-reset {
+  padding: calc(2 * var(--u)) calc(8 * var(--u));
+  font: 500 calc(11.5 * var(--u)) var(--ui-font);
+  color: #777;
+  background: #f1eee9;
+  border-radius: calc(7 * var(--u));
+}
+.panel .set-reset:hover:not(:disabled) { color: var(--ink); background: #e8e4dd; }
+.panel .set-reset:disabled { opacity: 0.4; cursor: default; }
 .set-hint { margin: 0; font-size: calc(11 * var(--u)); color: #aaa; line-height: 1.35; }
+.set-fade { display: flex; align-items: center; gap: calc(10 * var(--u)); }
+.set-fade-name { min-width: calc(30 * var(--u)); flex: none; }
+.set-value { width: calc(32 * var(--u)); flex: none; text-align: right; color: var(--ink); font-variant-numeric: tabular-nums; }
+.set-range { flex: 1; min-width: 0; margin: 0; accent-color: var(--ink); cursor: pointer; }
 /* segmented control: a tinted track, the chosen one lifts out white */
 .seg { display: flex; gap: 2px; padding: 2px; background: #f1eee9; border-radius: calc(9 * var(--u)); }
 .panel .seg button {
@@ -1095,6 +1111,12 @@ g.spark { animation: spark 0.16s steps(2) infinite alternate; transform-box: fil
 
 /* a Ticky away being teased isn't here */
 .pet[data-away] { visibility: hidden; pointer-events: none; }
+
+/* 투명도 setting (--fade, set by App): the Tickies, their bubbles and the price rows; menus and
+   cards stay solid. filter: opacity() so it adds to the opacity these already animate */
+.pet .art, .pet .above { filter: opacity(var(--fade, 1)); }
+.pet > .tag { filter: opacity(var(--fade-prices, 1)); } /* 시세: the name tag under each Ticky */
+.ticker:not(.in-panel) .ticker-row { filter: opacity(var(--fade-list, 1)); } /* 티키 퇴근 price list */
 
 /* the toy in hand follows the mouse */
 .tease-hand {

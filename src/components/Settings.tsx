@@ -48,6 +48,19 @@ export interface Bridge {
   set: (msg: SetMessage) => void;
 }
 
+/** one 투명도 slider: 0% (solid) to 70%; the setting itself is how solid it is (1 … 0.3) */
+function Fade({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  const pct = Math.round((1 - value) * 100);
+  return (
+    <label className="set-fade">
+      <span className="set-fade-name">{label}</span>
+      <input className="set-range" type="range" min={0} max={70} step={5} value={pct}
+        onChange={(e) => onChange(1 - Number(e.target.value) / 100)} aria-label={`${label} 투명도`} />
+      <span className="set-value">{pct}%</span>
+    </label>
+  );
+}
+
 /** The settings window: menu on the left, the chosen page on the right. */
 export function Settings({ bridge, onClose }: { bridge?: Bridge; onClose?: () => void }) {
   useTextScale();
@@ -58,6 +71,9 @@ export function Settings({ bridge, onClose }: { bridge?: Bridge; onClose?: () =>
   const [snap, setSnap] = useState<Snapshot>(() => bridge?.snapshot ?? {
     layout: load<Layout>("ticky.layout", "roam"),
     scale: load("ticky.scale", 1),
+    opacity: load("ticky.opacity", 1),
+    priceOpacity: load("ticky.priceOpacity", 1),
+    listOpacity: load("ticky.listOpacity", 1),
     followHours: load("ticky.followHours", false),
     wakeExtended: load("ticky.wakeExtended", true),
     hideFullscreen: load("ticky.hideFullscreen", true),
@@ -161,6 +177,32 @@ export function Settings({ bridge, onClose }: { bridge?: Bridge; onClose?: () =>
                   </button>
                 ))}
               </div>
+            </div>
+            <div className="set-sec">
+              <div className="set-label set-label-row">
+                투명도
+                <button
+                  type="button"
+                  className="set-reset"
+                  disabled={snap.layout === "roam" ? snap.opacity === 1 && snap.priceOpacity === 1 : snap.listOpacity === 1}
+                  onClick={() => {
+                    if (snap.layout === "roam") { set("opacity", 1); set("priceOpacity", 1); } else set("listOpacity", 1);
+                  }}
+                >초기화</button>
+              </div>
+              {/* 출근: the Tickies and their name tags; 퇴근: the price list in the corner */}
+              {snap.layout === "roam" ? (
+                <>
+                  <Fade label="티키" value={snap.opacity} onChange={(v) => set("opacity", v)} />
+                  <Fade label="시세" value={snap.priceOpacity} onChange={(v) => set("priceOpacity", v)} />
+                  <p className="set-hint">티키(말풍선 포함)와 티키 밑 시세 이름표를 따로 비치게 해요. 메뉴와 상세 카드는 그대로예요.</p>
+                </>
+              ) : (
+                <>
+                  <Fade label="시세 목록" value={snap.listOpacity} onChange={(v) => set("listOpacity", v)} />
+                  <p className="set-hint">오른쪽 아래 시세 목록이 얼마나 비쳐 보일지 정해요.</p>
+                </>
+              )}
             </div>
             {autostart && (
               <div className="set-sec">

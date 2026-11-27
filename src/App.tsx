@@ -129,6 +129,23 @@ export default function App() {
   const [scale, setScale] = useState<number>(() => nearestScale(load("ticky.scale", 1)));
   useEffect(() => save("ticky.scale", scale), [scale]);
   useTickyScale(scale);
+  // 투명도, set apart for the Tickies (with their bubbles), their name tags and the 퇴근 price list;
+  // menus and cards stay solid
+  const [opacity, setOpacity] = useState<number>(() => load("ticky.opacity", 1));
+  const [priceOpacity, setPriceOpacity] = useState<number>(() => load("ticky.priceOpacity", 1));
+  const [listOpacity, setListOpacity] = useState<number>(() => load("ticky.listOpacity", 1));
+  useEffect(() => {
+    save("ticky.opacity", opacity);
+    document.documentElement.style.setProperty("--fade", String(opacity));
+  }, [opacity]);
+  useEffect(() => {
+    save("ticky.priceOpacity", priceOpacity);
+    document.documentElement.style.setProperty("--fade-prices", String(priceOpacity));
+  }, [priceOpacity]);
+  useEffect(() => {
+    save("ticky.listOpacity", listOpacity);
+    document.documentElement.style.setProperty("--fade-list", String(listOpacity));
+  }, [listOpacity]);
   useTextScale();
   useDockHeight();
   useClickThroughRegions();
@@ -272,7 +289,7 @@ export default function App() {
   // ---- the settings window ----------------------------------------------------------------
   // it lives in its own window: send it what it shows (now and then, and when it says hello),
   // and apply what it changes. In the browser preview there's no 2nd window: it opens in-page.
-  const snapshot: Snapshot = { quotes, moods, status, layout, scale, followHours, wakeExtended, hideFullscreen, monitor, preview };
+  const snapshot: Snapshot = { quotes, moods, status, layout, scale, opacity, priceOpacity, listOpacity, followHours, wakeExtended, hideFullscreen, monitor, preview };
   const snapRef = useRef(snapshot);
   snapRef.current = snapshot;
   useEffect(() => {
@@ -285,6 +302,9 @@ export default function App() {
     switch (m.key) {
       case "layout": switchLayout(m.value); break;
       case "scale": setScale(m.value); break;
+      case "opacity": setOpacity(m.value); break;
+      case "priceOpacity": setPriceOpacity(m.value); break;
+      case "listOpacity": setListOpacity(m.value); break;
       case "followHours": setFollowHours(m.value); break;
       case "wakeExtended": setWakeExtended(m.value); break;
       case "hideFullscreen": setHideFullscreen(m.value); break;

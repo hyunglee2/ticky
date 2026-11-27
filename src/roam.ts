@@ -9,6 +9,7 @@
 import { useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { MoodKey } from "./ticky/moods";
+import { sectorOf, type Sector } from "./ticky/sectors";
 import { inTauri } from "./clickThrough";
 
 /** walking speed in px per second at the normal size */
@@ -61,7 +62,7 @@ export type TickyEvent =
   | { kind: "shy" }
   | { kind: "fun" }
   | { kind: "poke" }
-  | { kind: "meet"; other: MoodKey; turn: 0 | 1; roll: number } // turn: who speaks first; roll: shared, so a set dialogue lines up
+  | { kind: "meet"; other: MoodKey; turn: 0 | 1; roll: number; sector?: Sector } // turn: who speaks first; roll: shared, so a set dialogue lines up
   | { kind: "leave"; talk: boolean }   // 퇴근: bows goodbye before walking off
   | { kind: "arrive"; talk: boolean }; // 출근: walked in, bows hello
 
@@ -391,8 +392,10 @@ export function useRoaming(moods: Record<string, MoodKey>) {
             // only now and then do they hop for joy; usually they just stop and talk
             if (Math.random() < MEET_HOP_CHANCE) for (const p of [a, b]) p.el.dataset.hop = p.el.dataset.hop === "a" ? "b" : "a";
             const roll = Math.random();
-            tell(a.el, { kind: "meet", other: moodsRef.current[b.symbol] ?? "calm", turn: 0, roll });
-            setTimeout(() => tell(b.el, { kind: "meet", other: moodsRef.current[a.symbol] ?? "calm", turn: 1, roll }), 900);
+            const sa = sectorOf(a.symbol);
+            const sector = sa && sa === sectorOf(b.symbol) ? sa : undefined; // same industry: they talk shop
+            tell(a.el, { kind: "meet", other: moodsRef.current[b.symbol] ?? "calm", turn: 0, roll, sector });
+            setTimeout(() => tell(b.el, { kind: "meet", other: moodsRef.current[a.symbol] ?? "calm", turn: 1, roll, sector }), 900);
             continue;
           }
           if (Math.random() < PASS_CHANCE) {

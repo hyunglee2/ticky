@@ -1,4 +1,6 @@
 // Mood engine: today's % change → one of 9 market moods, plus special states.
+import type { Sector } from "./sectors";
+
 export type MoodKey =
   | "boom" | "cheer" | "happy" | "good" | "calm" | "sulky" | "sad" | "melt" | "blast"
   | "sleep" | "shock" | "offline" | "alarm";
@@ -220,9 +222,49 @@ export const REACT_LINES = {
     upUp:     ["하이파이브!", "우리 오늘 폼 미쳐따", "너도 올랐네?"],
     // both up: now and then a set exchange instead (first line, then the answer)
     upUpTalk: [["나 왜 이 순간이 영원할 것 같지?", "영원할 건가 보다"]],
+    // same industry: a set exchange about it ({s} = the industry). upFirst/downFirst: tones differ,
+    // named after the one who speaks first
+    sector: {
+      upUp: [
+        ["{s} 오늘 좋다!", "{s} 시대 왔다"],
+        ["{s} 불붙었네", "우리 업종 최고"],
+        ["오늘 {s} 날이네", "하이파이브!"],
+      ],
+      downDown: [
+        ["{s} 오늘 왜 이래", "우리 업종 다 이래..."],
+        ["{s} 언제 살아나", "버티면 온다"],
+        ["{s} 단체로 빠지네", "같이 버티자"],
+      ],
+      upFirst: [
+        ["{s} 오늘 좋지?", "너만 좋아..."],
+        ["나 오늘 잘 나가", "같은 {s}인데 왜 나만..."],
+      ],
+      downFirst: [
+        ["{s} 오늘 왜 이래", "난 괜찮은데?"],
+        ["같은 {s}인데 너만 오르냐", "미안 ㅎㅎ"],
+      ],
+      flat: [
+        ["{s}끼리 만났네", "업종 모임이야?"],
+        ["{s} 요즘 어때?", "그냥저냥"],
+      ],
+    },
     upDown:   ["괜찮아?", "힘내", "토닥토닥"],
     downUp:   ["부럽다...", "좋겠다", "나도 데려가"],
     downDown: ["우리 왜 이래", "같이 버티자", "너도냐..."],
     hi:       ["안녕", "뭐 해?", "ㅎㅇ"],
   },
 };
+
+/** a few industries have their own lines, added to the shared ones when both go the same way */
+export const SECTOR_EXTRA: Partial<Record<Sector, { upUp?: [string, string][]; downDown?: [string, string][] }>> = {
+  semi:    { upUp: [["HBM 덕분이다", "AI 만세!"]], downDown: [["외인이 반도체 또 던졌대", "HBM 믿는다..."]] },
+  battery: { upUp: [["2차전지 돌아왔다!", "꽉 잡아"]], downDown: [["2차전지 언제 돌아와", "존버는 승리한다"]] },
+  bio:     { upUp: [["임상 대박 났나?", "바이오 가즈아"]], downDown: [["임상 결과 언제 나와", "기다리다 지친다"]] },
+  bank:    { upUp: [["배당 두둑하겠다", "금리 최고"]], downDown: [["금리가 문제야", "배당이라도 받자"]] },
+  defense: { upUp: [["수출 또 따냈대", "K방산 간다"]] },
+  ship:    { upUp: [["수주 또 했대", "배 만들러 가자"]] },
+  crypto:  { upUp: [["비트 간다!", "투 더 문"]], downDown: [["코인 왜 이래", "떡상 기다리자"]] },
+};
+
+/** the line for an industry exchange, with the industry filled in */
+export const sectorLine = (line: string, name: string) => line.replace(/\{s\}/g, name);

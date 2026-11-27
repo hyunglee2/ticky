@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { headTop, tickySvg, type Face } from "../ticky/art";
 import type { Outfit } from "../ticky/outfit";
 import { useDrawnTop } from "../ticky/measure";
-import { moodName, moodTone, pickFrom, REACT_LINES, TEASE_LINES, type MoodKey, type Tone } from "../ticky/moods";
+import { moodName, moodTone, pickFrom, REACT_LINES, SECTOR_EXTRA, sectorLine, TEASE_LINES, type MoodKey, type Tone } from "../ticky/moods";
+import { SECTOR_NAME } from "../ticky/sectors";
 import type { TickyEvent } from "../roam";
 import { displayName, fullName, type Quote, type Session, type WatchItem } from "../market/types";
 import { QuoteCard } from "./QuoteCard";
@@ -49,6 +50,7 @@ const SAY_MS = [3200, 4800];   // how long a bubble stays
 const QUIET_MS = [4000, 11000]; // pause between bubbles
 const ALARM_QUIET_MS = [400, 800]; // 비상 is short: its follow-up line comes right after
 const HINT_CHANCE = 0.4;        // situational lines beat mood lines
+const SECTOR_TALK_CHANCE = 0.7; // two Tickies of the same industry meeting: how often they talk about it
 const UP_TALK_CHANCE = 0.5;     // two rising Tickies meeting: how often they have a set exchange
 const REACT_MS = 2200;          // a reaction (poke, throw, meeting) bubble
 const ANGRY_POKES = 4, ANGRY_WINDOW = 3000, ANGRY_MS = 1600; // poked this often → cross for a bit
@@ -88,6 +90,16 @@ function reaction(e: TickyEvent, mood: MoodKey, tone: Tone, angry: boolean): { t
     case "meet": {
       if (mood === "sleep" || mood === "offline") return { text: null };
       const theirs = moodTone(e.other, 0);
+      if (e.sector && e.roll < SECTOR_TALK_CHANCE) {
+        // same industry: both pick the same exchange from the shared roll; turn says which line is mine
+        const S = R.meet.sector, x = SECTOR_EXTRA[e.sector];
+        const first = e.turn === 0 ? tone : theirs;
+        const pool = tone === "flat" || theirs === "flat" ? S.flat
+          : tone === theirs ? (tone === "up" ? [...S.upUp, ...(x?.upUp ?? [])] : [...S.downDown, ...(x?.downDown ?? [])])
+          : first === "up" ? S.upFirst : S.downFirst;
+        const talk = pool[Math.floor((e.roll / SECTOR_TALK_CHANCE) * pool.length)];
+        return { text: sectorLine(talk[e.turn], SECTOR_NAME[e.sector]), face: tone === "up" ? "happy" : tone === "flat" ? "relief" : undefined };
+      }
       if (tone === "flat" || theirs === "flat") return say(R.meet.hi, "relief");
       if (tone === "up" && theirs === "up" && e.roll < UP_TALK_CHANCE) {
         const talk = R.meet.upUpTalk[Math.floor((e.roll / UP_TALK_CHANCE) * R.meet.upUpTalk.length)];

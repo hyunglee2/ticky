@@ -15,6 +15,12 @@ export type Layout = "roam" | "prices";
 export interface Settings {
   layout: Layout;
   scale: number;
+  /** how solid the Tickies look: 1 = solid, down to 0.3 */
+  opacity: number;
+  /** how solid the name tag (name + price) under each Ticky looks: 1 = solid, down to 0.3 */
+  priceOpacity: number;
+  /** how solid the 티키 퇴근 price list in the corner looks: 1 = solid, down to 0.3 */
+  listOpacity: number;
   followHours: boolean;
   wakeExtended: boolean;
   /** step aside (hide) while a full-screen app is in front */

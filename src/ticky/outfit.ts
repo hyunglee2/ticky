@@ -139,7 +139,7 @@ export function drawHead(item: HeadItem, t: number, ey = t + 27): string {
     case "jonber": // a headband with 존버 on it, the knot's ends flying out on the right
       return `<path d="M91 ${t + 7}l10 -6l1.5 7ZM91 ${t + 10}l10 4l-4.5 5Z" fill="#fff" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/>` +
         `<rect x="30" y="${t + 3}" width="61" height="11" rx="3" fill="#fff" stroke="${INK}" stroke-width="2"/>` +
-        `<text x="60.5" y="${t + 11.6}" text-anchor="middle" font-family="Pretendard Variable, Pretendard, sans-serif" font-weight="800" font-size="8.6" fill="#e5383b">존버</text>`;
+        `<text class="readable" x="60.5" y="${t + 11.6}" text-anchor="middle" font-family="Pretendard Variable, Pretendard, sans-serif" font-weight="800" font-size="8.6" fill="#e5383b">존버</text>`;
     case "earmuffs": { // a band over the head and a fluffy round muff on each side
       const muff = (cx: number) => {
         const pts: string[] = [];
